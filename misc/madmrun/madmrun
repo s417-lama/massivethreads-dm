@@ -1,0 +1,80 @@
+#!/bin/bash
+
+thisdir=$(cd $(dirname $BASH_SOURCE); pwd)
+
+
+opt_error=0
+np=1
+steal_type=
+join_type=
+envs=
+hostfile=
+dry_run=
+mca_opts=
+fjcomm_mode=memory-saving
+while getopts "c:df:j:m:n:s:x:" flag; do
+    case $flag in
+	\?) opt_error=1; break;;
+	f) hostfile="-hostfile $OPTARG";;
+	n) np="$OPTARG";;
+	x) envs="$envs -x $OPTARG";;
+	s) steal_type="$OPTARG";;
+	j) join_type="$OPTARG";;
+	d) dry_run=1;;
+        m) mca_opts="$mca_opts --mca $OPTARG";;
+        c) fjcomm_mode="$OPTARG";;
+    esac
+done
+
+shift $(( $OPTIND - 1 ))
+
+# report option error 
+if [ "$opt_error" == "1" -o "$*" = "" ]; then
+    echo >&2 "Usage: 
+    $0 
+        [-n <# of MPI processes>]
+        [-x <env>]
+        [-f <hostfile>]
+        [-s <steal_type>]
+        [-d] (dry run)
+        [-m <MPI mca parameters>]
+        [-c < default | fast | memory-saving >]
+            (Fujitsu MPI fast or memory-saving mode. 
+             default: memory-saving)
+        <program> [<args>]"
+    exit 1
+fi
+
+# set environment variables
+if [ "$steal_type" != "" ]; then
+    envs="$envs -x MADM_STEAL_TYPE=$steal_type"
+fi
+if [ "$join_type" != "" ]; then
+    envs="$envs -x MADM_JOIN_TYPE=$join_type"
+fi
+
+# Fujitsu MPI communication modes
+if [ "$fjcomm_mode" == "default" ]; then
+    mca_opts="$mca_opts --mca common_tofu_max_fastmode_procs 1024"
+fi
+if [ "$fjcomm_mode" == "fast" ]; then
+    mca_opts="$mca_opts --mca common_tofu_max_fastmode_procs -1"
+fi
+if [ "$fjcomm_mode" == "memory-saving" ]; then
+    mca_opts="$mca_opts --mca common_tofu_max_fastmode_procs 0"
+fi
+
+disable_aslr="$thisdir/madm_disable_aslr"
+if [ "$(uname -s)" = "Darwin" ]; then
+    disable_aslr=""
+fi
+
+# run or dry run
+params="-n $np -x MADM_RUN__=1 $envs $hostfile $mca_opts"
+cmd="mpirun $params $disable_aslr $@"
+
+if [ "$dry_run" == "" ]; then
+    $cmd
+else
+    echo $cmd
+fi
