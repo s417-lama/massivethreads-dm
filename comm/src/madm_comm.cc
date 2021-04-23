@@ -28,6 +28,16 @@ namespace comm {
         MADI_DPUTS2("madm::comm start initialization");
 
 #if MADI_COMM_LAYER == MADI_COMM_LAYER_SHMEM
+        int init;
+        MPI_Initialized(&init);
+
+        if (!init)
+            MPI_Init(&argc, &argv);
+
+        g.comm = new comm_system(argc, argv, handler);
+
+        g.debug_out = stderr;
+        MPI_Comm_rank(MPI_COMM_WORLD, &g.debug_pid);
 #elif MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
         // initialize GASNet for MassiveThreads/GAS
         gasnet_handlerentry_t amentries[256];
