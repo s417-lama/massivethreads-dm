@@ -260,7 +260,7 @@ namespace comm {
         for (auto i = 0; i < n_procs_; i++)
             addrs[i] = CM_BASE_ADDR + CM_MAX_SIZE * i;
 
-        auto csmap = make_unique<coll_shm_map>(MEMID_DEFAULT,
+        auto csmap = std::make_unique<coll_shm_map>(MEMID_DEFAULT,
                                                addrs, 0,
                                                address_type::same, config);
 
@@ -272,7 +272,7 @@ namespace comm {
     {
         auto memid = coll_shm_maps_.size();
 
-        auto csmap = make_unique<coll_shm_map>(memid, addr, size, config);
+        auto csmap = std::make_unique<coll_shm_map>(memid, addr, size, config);
         coll_shm_maps_.push_back(std::move(csmap));
 
         return memid;
@@ -324,7 +324,7 @@ namespace comm {
             csmap.reset(nullptr);
 
             // reconstruct shared memory map
-            auto new_csmap = make_unique<coll_shm_map>(memid, addrs, size,
+            auto new_csmap = std::make_unique<coll_shm_map>(memid, addrs, size,
                                                        address_type::same,
                                                        config);
             coll_shm_maps_[memid] = std::move(new_csmap);

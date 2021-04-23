@@ -23,10 +23,10 @@ namespace comm {
         process_config native_config_;
 
         // inter-process shared memory manager
-        unique_ptr<comm_memory> cm_;
+        std::unique_ptr<comm_memory> cm_;
 
         // allocator for inter-process shared memory
-        unique_ptr<cm_allocator> comm_alc_;
+        std::unique_ptr<cm_allocator> comm_alc_;
 
     public:
         explicit comm_base(int& argc, char **& argv, amhandler_t handler);

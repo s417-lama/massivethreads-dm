@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "shmem/comm_base.h"
 #include "options.h"
 
@@ -7,8 +9,8 @@ namespace comm {
     comm_base::comm_base(int& argc, char **& argv, amhandler_t handler)
         : native_config_()
     {
-        cm_ = make_unique<comm_memory>(native_config_);
-        comm_alc_ = make_unique<cm_allocator>(cm_.get());
+        cm_ = std::make_unique<comm_memory>(native_config_);
+        comm_alc_ = std::make_unique<cm_allocator>(cm_.get());
     }
 
     void ** comm_base::coll_malloc(size_t size, process_config& config)

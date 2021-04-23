@@ -43,11 +43,14 @@ endif
 lib_LTLIBRARIES = libmcomm.la
 libmcomm_la_SOURCES = \
     options.cc \
-    gasnet_ext.cc \
     process_config.cc \
     comm_system.cc \
     madm_comm.cc \
     $(sources)
+
+if MADI_COMM_LAYER_GASNET
+libmcomm_la_SOURCES += gasnet_ext.cc
+endif
 
 libmcomm_la_CPPFLAGS  = -I$(top_srcdir)/comm/include \
                         -I$(top_srcdir)/comm/include/madm \

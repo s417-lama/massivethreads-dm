@@ -70,7 +70,7 @@ namespace comm {
 
         // (base address of shared memory, file descriptor) pair
         // at each process withhin a node
-        std::vector<unique_ptr<coll_shm_map>> coll_shm_maps_;
+        std::vector<std::unique_ptr<coll_shm_map>> coll_shm_maps_;
 
         uint8_t *region_begin_;
         uint8_t *region_end_;

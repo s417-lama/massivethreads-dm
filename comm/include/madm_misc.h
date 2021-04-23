@@ -29,54 +29,6 @@ extern "C" {
 
 namespace madi {
 
-    // inline std::unique_ptr.
-    // this class can be use without std:: prefix.
-#if 0
-    template <class T, class D = std::default_delete<T>>
-    using unique_ptr = std::unique_ptr<T, D>;
-#else
-    // g++ 4.6.1 does not support template aliases
-    template <class T, class D = std::default_delete<T>>
-    struct unique_ptr : std::unique_ptr<T, D> {
-        typedef unique_ptr<T, D> this_type;
-        typedef std::unique_ptr<T, D> base_type;
-        typedef typename std::unique_ptr<T, D>::pointer pointer;
-
-        constexpr unique_ptr() : base_type() {}
-
-        explicit unique_ptr(pointer p) : base_type(p) {}
-
-        unique_ptr(pointer p, D d) : base_type(p, d) {}
-
-        unique_ptr(this_type&& u) : base_type(std::forward<this_type>(u)) {}
-
-        constexpr unique_ptr(std::nullptr_t p) : base_type(p) {}
-
-        template <class U, class E>
-        unique_ptr(unique_ptr<U, E>&& u)
-            : std::unique_ptr<U, E>(std::forward<unique_ptr<U, E>>(u)) {}
-
-        template <class U>
-        unique_ptr(std::auto_ptr<U>&& u)
-            : std::unique_ptr<U>(std::forward<std::auto_ptr<U>>(u)) {}
-
-        unique_ptr& operator=(unique_ptr&& u)
-        {
-            base_type& lhs = *static_cast<base_type *>(this);
-            base_type&& rhs = static_cast<base_type&&>(u);
-            base_type& result = lhs.operator=(std::forward<base_type>(rhs));
-            return static_cast<unique_ptr&>(result);
-        }
-    };
-#endif
-
-    // C++14 make_unique function
-    template<class T, class... Args>
-    unique_ptr<T> make_unique(Args&&... args)
-    {
-        return unique_ptr<T>(new T(std::forward<Args>(args)...));
-    }
-   
     // utility class similar to boost::noncopyable
     struct noncopyable {
     protected:

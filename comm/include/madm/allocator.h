@@ -28,51 +28,6 @@ namespace comm {
         template <class T>
         void * allocate(size_t size, T& param);
         void deallocate(void *p);
-
-        // custom deleter for allocator<T>::unique_ptr
-        template <class T>
-        class default_delete {
-            allocator<MemRegion> *alc_;
-        public:
-            explicit default_delete() : alc_(NULL) {}
-            explicit default_delete(allocator *alc) : alc_(alc) {}
-
-            void operator()(T *p)
-            {
-                alc_->deallocate((void *)p);
-            }
-        };
-
-        // unique_ptr for the memory allocated by allocator<T>
-        // (g++ 4.6.1 does not support template aliases)
-        template <class T, class D = default_delete<T>>
-        struct unique_ptr : std::unique_ptr<T, D> {
-            typedef typename std::unique_ptr<T, D>::pointer pointer;
-
-            constexpr unique_ptr() : std::unique_ptr<T, D>() {}
-            explicit unique_ptr(pointer p) : std::unique_ptr<T, D>(p) {}
-            unique_ptr(pointer p, D d) : std::unique_ptr<T, D>(p, d) {}
-            unique_ptr(unique_ptr&& u) : std::unique_ptr<T, D>(u) {}
-            constexpr unique_ptr(std::nullptr_t p)
-                : std::unique_ptr<T, D>(p) {}
-
-            template <class U, class E>
-            unique_ptr(unique_ptr<U, E>&& u) : std::unique_ptr<U, E>(u) {}
-
-            template <class U>
-            unique_ptr(std::auto_ptr<U>&& u) : std::unique_ptr<U>(u) {}
-        };
-
-        // make_unique for allocator<T>
-        template <class T, class... Args>
-        unique_ptr<T> make_unique(void *param, Args&&... args)
-        {
-            void *p = allocate(sizeof(T), param);
-
-            T *obj = new (p) T(std::forward<Args>(args)...);
-
-            return unique_ptr<T>(obj, default_delete<T>(this));
-        }
     };
 
 

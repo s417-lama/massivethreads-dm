@@ -156,52 +156,54 @@ AC_DEFINE_UNQUOTED([MADI_COMM_LAYER],[$comm_layer],[Communication Layer])
 # --with-gasnet-conduit=conduit
 # --with-gasnet-thread={seq,par,parsync}
 #
-AC_ARG_WITH([gasnet],
-            [AS_HELP_STRING([--with-gasnet=path],
-                            [Set gasnet install directory to path.])],
-            [gasnet_prefix=$withval],
-            [gasnet_prefix="no"])
+if test "x$comm_layer" = "xMADI_COMM_LAYER_GASNET"; then
+  AC_ARG_WITH([gasnet],
+              [AS_HELP_STRING([--with-gasnet=path],
+                              [Set gasnet install directory to path.])],
+              [gasnet_prefix=$withval],
+              [gasnet_prefix="no"])
 
-AS_IF([test "x$gasnet_prefix" == xno],
-      [AC_MSG_ERROR([Please specify -with-gasnet=path ($gasnet_prefix) option.])])
+  AS_IF([test "x$gasnet_prefix" == xno],
+        [AC_MSG_ERROR([Please specify -with-gasnet=path ($gasnet_prefix) option.])])
 
-AC_ARG_WITH([gasnet-conduit],
-            [AS_HELP_STRING([--with-gasnet-conduit=conduit],
-                            [Set gasnet conduit to conduit (default: mpi).])],
-            [gasnet_conduit=$withval],
-            [gasnet_conduit="mpi"])
+  AC_ARG_WITH([gasnet-conduit],
+              [AS_HELP_STRING([--with-gasnet-conduit=conduit],
+                              [Set gasnet conduit to conduit (default: mpi).])],
+              [gasnet_conduit=$withval],
+              [gasnet_conduit="mpi"])
 
-AS_IF([test "x$gasnet_conduit" != xmpi -a "x$gasnet_conduit" != xibv],
-      [AC_MSG_ERROR([Please specify -with-gasnet-conduit={mpi,ibv}])])
+  AS_IF([test "x$gasnet_conduit" != xmpi -a "x$gasnet_conduit" != xibv],
+        [AC_MSG_ERROR([Please specify -with-gasnet-conduit={mpi,ibv}])])
 
-AC_ARG_WITH([gasnet-thread],
-            [AS_HELP_STRING([--with-gasnet-thread=opt],
-                            [Set gasnet thread option to opt (default: par).])],
-            [gasnet_thread=$withval],
-            [gasnet_thread="par"])
+  AC_ARG_WITH([gasnet-thread],
+              [AS_HELP_STRING([--with-gasnet-thread=opt],
+                              [Set gasnet thread option to opt (default: par).])],
+              [gasnet_thread=$withval],
+              [gasnet_thread="par"])
 
-AS_IF([test "x$gasnet_thread" != xseq -a "x$gasnet_thread" != xpar],
-      [AC_MSG_ERROR([Please specify -with-gasnet-conduit={seq,par}.])])
+  AS_IF([test "x$gasnet_thread" != xseq -a "x$gasnet_thread" != xpar],
+        [AC_MSG_ERROR([Please specify -with-gasnet-conduit={seq,par}.])])
 
-GASNET_THREAD_DEFINE="-DGASNET_$(echo $gasnet_thread | tr [[a-z]] [[A-Z]])"
+  GASNET_THREAD_DEFINE="-DGASNET_$(echo $gasnet_thread | tr [[a-z]] [[A-Z]])"
 
-GASNET_CPPFLAGS="-I$gasnet_prefix/include"
-GASNET_CPPFLAGS="$GASNET_CPPFLAGS -I$gasnet_prefix/include/$gasnet_conduit-conduit"
-GASNET_CPPFLAGS="$GASNET_CPPFLAGS $GASNET_THREAD_DEFINE"
-GASNET_CPPFLAGS="$GASNET_CPPFLAGS -Wno-undef -Wno-unused-function -Wno-pragmas" # -Wno-deprecated-register -Wno-reserved-user-defined-literal"
-GASNET_LDFLAGS="-L$gasnet_prefix/lib -lgasnet-$gasnet_conduit-$gasnet_thread"
+  GASNET_CPPFLAGS="-I$gasnet_prefix/include"
+  GASNET_CPPFLAGS="$GASNET_CPPFLAGS -I$gasnet_prefix/include/$gasnet_conduit-conduit"
+  GASNET_CPPFLAGS="$GASNET_CPPFLAGS $GASNET_THREAD_DEFINE"
+  GASNET_CPPFLAGS="$GASNET_CPPFLAGS -Wno-undef -Wno-unused-function -Wno-pragmas" # -Wno-deprecated-register -Wno-reserved-user-defined-literal"
+  GASNET_LDFLAGS="-L$gasnet_prefix/lib -lgasnet-$gasnet_conduit-$gasnet_thread"
 
-AS_IF([test "x$gasnet_conduit" == xmpi],
-      [GASNET_LDFLAGS="$GASNET_LDFLAGS -lammpi"])
-AS_IF([test "x$gasnet_conduit" == xibv],
-      [GASNET_CPPFLAGS="$GASNET_CPPFLAGS -DGASNET_CONDUIT_IBV"])
-AS_IF([test "x$gasnet_conduit" == xibv],
-      [GASNET_LDFLAGS="$GASNET_LDFLAGS -libverbs"])
+  AS_IF([test "x$gasnet_conduit" == xmpi],
+        [GASNET_LDFLAGS="$GASNET_LDFLAGS -lammpi"])
+  AS_IF([test "x$gasnet_conduit" == xibv],
+        [GASNET_CPPFLAGS="$GASNET_CPPFLAGS -DGASNET_CONDUIT_IBV"])
+  AS_IF([test "x$gasnet_conduit" == xibv],
+        [GASNET_LDFLAGS="$GASNET_LDFLAGS -libverbs"])
 
-AS_IF([test "x$gasnet_prefix" != x],
-      [CPPFLAGS="$CPPFLAGS $GASNET_CPPFLAGS"])
-AS_IF([test "x$gasnet_prefix" != x],
-      [LDFLAGS="$LDFLAGS $GASNET_LDFLAGS"])
+  AS_IF([test "x$gasnet_prefix" != x],
+        [CPPFLAGS="$CPPFLAGS $GASNET_CPPFLAGS"])
+  AS_IF([test "x$gasnet_prefix" != x],
+        [LDFLAGS="$LDFLAGS $GASNET_LDFLAGS"])
+fi
 
 #
 # here we go

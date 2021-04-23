@@ -22,8 +22,8 @@ namespace comm {
         process_config  config_compute_;
         process_config* config_;
 
-        unique_ptr<coll_type> coll_native_;
-        unique_ptr<coll_type> coll_compute_;
+        std::unique_ptr<coll_type> coll_native_;
+        std::unique_ptr<coll_type> coll_compute_;
         coll_type *coll_;
 
     public:
@@ -35,10 +35,10 @@ namespace comm {
                               compute_of_native_pid)
             , config_(&config_native_)
         {
-            coll_native_ = make_unique<coll_type>(c_, config_native_);
+            coll_native_ = std::make_unique<coll_type>(c_, config_native_);
 
             if (config_compute_.is_compute())
-                coll_compute_ = make_unique<coll_type>(c_, config_compute_);
+                coll_compute_ = std::make_unique<coll_type>(c_, config_compute_);
             else
                 coll_compute_ = nullptr;
 

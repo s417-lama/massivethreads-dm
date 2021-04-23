@@ -21,12 +21,6 @@ namespace ibv {
 
     static int debug = 0;
 
-    template <class T, class Deleter>
-    static std::unique_ptr<T, Deleter> make_unique(T *p, Deleter f)
-    {
-        return std::unique_ptr<T, Deleter>(p, f);
-    }
-
     template <class T, class D>
     class resource {
         T obj_;
@@ -126,8 +120,8 @@ namespace ibv {
 #endif
 
             // make context
-            auto devs = make_unique(ibv_get_device_list(NULL),
-                                    ibv_free_device_list);
+            auto devs = std::make_unique(ibv_get_device_list(NULL),
+                                         ibv_free_device_list);
 
             if (devs == nullptr)
                 MADI_PERR_DIE("ibv_get_device_list");
@@ -140,8 +134,8 @@ namespace ibv {
             if (debug)
                 printf("IB device: %s\n", ibv_get_device_name(dev));
 
-            ctx_ = make_unique(ibv_open_device(dev),
-                               ibv_close_device);
+            ctx_ = std::make_unique(ibv_open_device(dev),
+                                    ibv_close_device);
 
             assert(ctx_ != nullptr);
 
@@ -156,8 +150,8 @@ namespace ibv {
             assert(lid_ != 0);
 
             // make protection domain
-            pd_ = make_unique(ibv_alloc_pd(ctx_.get()),
-                              ibv_dealloc_pd);
+            pd_ = std::make_unique(ibv_alloc_pd(ctx_.get()),
+                                   ibv_dealloc_pd);
 
             assert(pd_ != nullptr);
         }

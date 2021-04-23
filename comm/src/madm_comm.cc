@@ -1,7 +1,10 @@
 #include "madm_comm.h"
 #include "madm_misc.h"
 #include "options.h"
+#if MADI_COMM_LAYER == MADI_COMM_LAYER_SHMEM
+#elif MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
 #include "gasnet_ext.h"
+#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -24,7 +27,8 @@ namespace comm {
 
         MADI_DPUTS2("madm::comm start initialization");
 
-#if MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
+#if MADI_COMM_LAYER == MADI_COMM_LAYER_SHMEM
+#elif MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
         // initialize GASNet for MassiveThreads/GAS
         gasnet_handlerentry_t amentries[256];
         initialize_gasnet(argc, argv, amentries, 0);
@@ -60,7 +64,8 @@ namespace comm {
         delete g.comm;
         g.comm = NULL;
 
-#if MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
+#if MADI_COMM_LAYER == MADI_COMM_LAYER_SHMEM
+#elif MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
         MPI_Finalize();
 #endif
         options_finalize();
