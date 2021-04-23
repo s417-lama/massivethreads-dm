@@ -237,22 +237,6 @@ AC_CONFIG_FILES([Makefile
                  uth/examples/bin_lambda/Makefile
                  uth/examples/uts/Makefile
                  uth/examples/nqueens/Makefile
-                 mgas/Makefile
-                 mgas/include/Makefile
-                 mgas/src/Makefile
-                 mgas/examples/Makefile
-                 mgas/examples/plain/Makefile
-                 mgas/examples/stream/Makefile
-                 mgas/examples/perf/Makefile
-                 mgas/examples/mm/Makefile
-                 madm/Makefile
-                 madm/include/Makefile
-                 madm/src/Makefile
-                 madm/examples/Makefile
-                 madm/examples/plain/Makefile
-                 madm/examples/bin/Makefile
-                 madm/examples/stream/Makefile
-                 madm/examples/mm/Makefile
                  misc/Makefile
                  misc/madmrun/Makefile
                  ])

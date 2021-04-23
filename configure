@@ -18172,7 +18172,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # Only expand once:
 
 
-ac_config_files="$ac_config_files Makefile comm/Makefile comm/include/Makefile comm/include/madm/Makefile comm/include/madm/seq/Makefile comm/include/madm/shmem/Makefile comm/include/madm/mpi3/Makefile comm/include/madm/gasnet/Makefile comm/include/madm/ibv/Makefile comm/include/madm/fjmpi/Makefile comm/src/Makefile comm/examples/Makefile comm/examples/one_sided/Makefile comm/examples/perf/Makefile uth/Makefile uth/include/Makefile uth/include/uth/Makefile uth/include/uth/uni/Makefile uth/src/Makefile uth/examples/Makefile uth/examples/plain/Makefile uth/examples/host/Makefile uth/examples/overhead/Makefile uth/examples/flat/Makefile uth/examples/bin/Makefile uth/examples/bin_lambda/Makefile uth/examples/uts/Makefile uth/examples/nqueens/Makefile mgas/Makefile mgas/include/Makefile mgas/src/Makefile mgas/examples/Makefile mgas/examples/plain/Makefile mgas/examples/stream/Makefile mgas/examples/perf/Makefile mgas/examples/mm/Makefile madm/Makefile madm/include/Makefile madm/src/Makefile madm/examples/Makefile madm/examples/plain/Makefile madm/examples/bin/Makefile madm/examples/stream/Makefile madm/examples/mm/Makefile misc/Makefile misc/madmrun/Makefile"
+ac_config_files="$ac_config_files Makefile comm/Makefile comm/include/Makefile comm/include/madm/Makefile comm/include/madm/seq/Makefile comm/include/madm/shmem/Makefile comm/include/madm/mpi3/Makefile comm/include/madm/gasnet/Makefile comm/include/madm/ibv/Makefile comm/include/madm/fjmpi/Makefile comm/src/Makefile comm/examples/Makefile comm/examples/one_sided/Makefile comm/examples/perf/Makefile uth/Makefile uth/include/Makefile uth/include/uth/Makefile uth/include/uth/uni/Makefile uth/src/Makefile uth/examples/Makefile uth/examples/plain/Makefile uth/examples/host/Makefile uth/examples/overhead/Makefile uth/examples/flat/Makefile uth/examples/bin/Makefile uth/examples/bin_lambda/Makefile uth/examples/uts/Makefile uth/examples/nqueens/Makefile misc/Makefile misc/madmrun/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -19347,22 +19347,6 @@ do
     "uth/examples/bin_lambda/Makefile") CONFIG_FILES="$CONFIG_FILES uth/examples/bin_lambda/Makefile" ;;
     "uth/examples/uts/Makefile") CONFIG_FILES="$CONFIG_FILES uth/examples/uts/Makefile" ;;
     "uth/examples/nqueens/Makefile") CONFIG_FILES="$CONFIG_FILES uth/examples/nqueens/Makefile" ;;
-    "mgas/Makefile") CONFIG_FILES="$CONFIG_FILES mgas/Makefile" ;;
-    "mgas/include/Makefile") CONFIG_FILES="$CONFIG_FILES mgas/include/Makefile" ;;
-    "mgas/src/Makefile") CONFIG_FILES="$CONFIG_FILES mgas/src/Makefile" ;;
-    "mgas/examples/Makefile") CONFIG_FILES="$CONFIG_FILES mgas/examples/Makefile" ;;
-    "mgas/examples/plain/Makefile") CONFIG_FILES="$CONFIG_FILES mgas/examples/plain/Makefile" ;;
-    "mgas/examples/stream/Makefile") CONFIG_FILES="$CONFIG_FILES mgas/examples/stream/Makefile" ;;
-    "mgas/examples/perf/Makefile") CONFIG_FILES="$CONFIG_FILES mgas/examples/perf/Makefile" ;;
-    "mgas/examples/mm/Makefile") CONFIG_FILES="$CONFIG_FILES mgas/examples/mm/Makefile" ;;
-    "madm/Makefile") CONFIG_FILES="$CONFIG_FILES madm/Makefile" ;;
-    "madm/include/Makefile") CONFIG_FILES="$CONFIG_FILES madm/include/Makefile" ;;
-    "madm/src/Makefile") CONFIG_FILES="$CONFIG_FILES madm/src/Makefile" ;;
-    "madm/examples/Makefile") CONFIG_FILES="$CONFIG_FILES madm/examples/Makefile" ;;
-    "madm/examples/plain/Makefile") CONFIG_FILES="$CONFIG_FILES madm/examples/plain/Makefile" ;;
-    "madm/examples/bin/Makefile") CONFIG_FILES="$CONFIG_FILES madm/examples/bin/Makefile" ;;
-    "madm/examples/stream/Makefile") CONFIG_FILES="$CONFIG_FILES madm/examples/stream/Makefile" ;;
-    "madm/examples/mm/Makefile") CONFIG_FILES="$CONFIG_FILES madm/examples/mm/Makefile" ;;
     "misc/Makefile") CONFIG_FILES="$CONFIG_FILES misc/Makefile" ;;
     "misc/madmrun/Makefile") CONFIG_FILES="$CONFIG_FILES misc/madmrun/Makefile" ;;
 
