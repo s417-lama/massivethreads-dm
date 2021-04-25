@@ -29,7 +29,7 @@ namespace comm {
         process_config native_config_;
 
     public:
-        comm_base(int& argc, char **& argv);
+        comm_base(int& argc, char **& argv, amhandler_t handler);
         ~comm_base();
 
         process_config& native_config() { return native_config_; }

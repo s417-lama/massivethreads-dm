@@ -3,8 +3,8 @@
 #include "ampeer.h"
 #include "options.h"
 
+#include <cstring>
 #include <mpi.h>
-#include <mpi-ext.h>
 
 #define MADI_CB_DEBUG  0
 
@@ -17,7 +17,7 @@
 namespace madi {
 namespace comm {
 
-    comm_base::comm_base(int& argc, char **& argv)
+    comm_base::comm_base(int& argc, char **& argv, amhandler_t handler)
         : cmr_(NULL)
         , comm_alc_(NULL)
         , value_buf_(NULL)
@@ -228,6 +228,7 @@ namespace comm {
     template <class T> inline MPI_Datatype mpi_type();
     template <> inline MPI_Datatype mpi_type<int>() { return MPI_INT; }
     template <> inline MPI_Datatype mpi_type<long>() { return MPI_LONG; }
+    template <> inline MPI_Datatype mpi_type<unsigned long>() { return MPI_UNSIGNED_LONG; }
 
 
     template <class T>
@@ -254,6 +255,8 @@ namespace comm {
                                                process_config&);
     template long comm_base::fetch_and_add<long>(long *, long, int,
                                                  process_config&);
+    template unsigned long comm_base::fetch_and_add<unsigned long>(unsigned long *, unsigned long, int,
+                                                                   process_config&);
 }
 }
 

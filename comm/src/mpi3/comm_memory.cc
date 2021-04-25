@@ -6,8 +6,8 @@
 
 #include <climits>
 #include <cerrno>
+#include <cstring>
 #include <mpi.h>
-#include <mpi-ext.h>
 
 namespace madi {
 namespace comm {
