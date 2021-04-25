@@ -1,10 +1,6 @@
 #include "madm_comm.h"
 #include "madm_misc.h"
 #include "options.h"
-#if MADI_COMM_LAYER == MADI_COMM_LAYER_SHMEM
-#elif MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
-#include "gasnet_ext.h"
-#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -38,19 +34,6 @@ namespace comm {
 
         g.debug_out = stderr;
         MPI_Comm_rank(MPI_COMM_WORLD, &g.debug_pid);
-#elif MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
-        // initialize GASNet for MassiveThreads/GAS
-        gasnet_handlerentry_t amentries[256];
-        initialize_gasnet(argc, argv, amentries, 0);
-
-//        int r0 = MPI_Init(&argc, &argv);
-//        if (r0 != MPI_SUCCESS)
-//            return false;
-
-        g.debug_out = stderr;
-        MPI_Comm_rank(MPI_COMM_WORLD, &g.debug_pid);
-
-        g.comm = new comm_system(argc, argv, handler);
 #else
         // For GASNet, calling MPI_Init before gasnet_init is problematic
         // in OpenMPI.
@@ -74,10 +57,8 @@ namespace comm {
         delete g.comm;
         g.comm = NULL;
 
-#if MADI_COMM_LAYER == MADI_COMM_LAYER_SHMEM
-#elif MADI_COMM_LAYER != MADI_COMM_LAYER_GASNET
         MPI_Finalize();
-#endif
+
         options_finalize();
     }
 

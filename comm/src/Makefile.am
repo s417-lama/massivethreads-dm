@@ -48,10 +48,6 @@ libmcomm_la_SOURCES = \
     madm_comm.cc \
     $(sources)
 
-if MADI_COMM_LAYER_GASNET
-libmcomm_la_SOURCES += gasnet_ext.cc
-endif
-
 libmcomm_la_CPPFLAGS  = -I$(top_srcdir)/comm/include \
                         -I$(top_srcdir)/comm/include/madm \
                         -I$(top_srcdir)/comm/src \
