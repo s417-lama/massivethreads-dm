@@ -5,15 +5,17 @@ thisdir=$(cd $(dirname $BASH_SOURCE); pwd)
 
 opt_error=0
 np=1
+ppn=
 envs=
 hostfile=
 dry_run=
 mca_opts=
-while getopts "df:m:n:x:" flag; do
+while getopts "df:m:n:c:x:" flag; do
     case $flag in
         \?) opt_error=1; break;;
         f) hostfile="-hostfile $OPTARG";;
         n) np="$OPTARG";;
+        c) ppn="-ppn $OPTARG";;
         x) envs="$envs -x $OPTARG";;
         d) dry_run=1;;
         m) mca_opts="$mca_opts --mca $OPTARG";;
@@ -49,8 +51,8 @@ if [ "$(uname -s)" = "Darwin" ]; then
 fi
 
 # run or dry run
-# params="-n $np -x MADM_RUN__=1 $envs $hostfile $mca_opts"
-params="-n $np -env MADM_RUN__ 1 $envs $hostfile $mca_opts"
+export MADM_RUN__=1
+params="-n $np $ppn $envs $hostfile $mca_opts"
 cmd="mpirun $params $disable_aslr $@"
 
 # echo "$params"

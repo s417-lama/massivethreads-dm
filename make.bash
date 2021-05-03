@@ -4,8 +4,11 @@ export LC_ALL=C
 export LANG=C
 
 CFLAGS=""
-# CFLAGS="-O0 -g"
+# CFLAGS="-g"
+CFLAGS="-O0 -g"
 
-# CFLAGS=$CFLAGS ./configure
-CFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3
+# CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure
+CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3
+
+make clean
 make -j
