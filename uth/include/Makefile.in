@@ -349,7 +349,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = uth
-include_HEADERS = uth.h uth-cxx.h
+include_HEADERS = uth.h uth-cxx.h uth-cxx-decls.h uth-dtbb.h
 all: all-recursive
 
 .SUFFIXES:

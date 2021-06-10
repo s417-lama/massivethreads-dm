@@ -361,6 +361,10 @@ otherinclude_HEADERS = \
     misc.h \
     process-inl.h \
     process.h \
+		prof.h \
+		thread.h \
+		thread-inl.h \
+		uth-cxx-inl.h \
     uth-inl.h \
     uth_comm-inl.h \
     uth_comm.h \

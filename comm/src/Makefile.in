@@ -88,7 +88,6 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@MADI_COMM_LAYER_GASNET_TRUE@am__append_1 = gasnet_ext.cc
 subdir = comm/src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps =  \
@@ -144,7 +143,7 @@ am__libmcomm_la_SOURCES_DIST = options.cc process_config.cc \
 	fjmpi/comm_base.cc gasnet/comm_memory.cc gasnet/comm_base.cc \
 	ibv/comm_memory.cc ibv/comm_base.cc mpi3/comm_memory.cc \
 	mpi3/comm_base.cc seq/comm_base.cc shmem/comm_memory.cc \
-	shmem/comm_base.cc gasnet_ext.cc
+	shmem/comm_base.cc
 am__dirstamp = $(am__leading_dot)dirstamp
 @MADI_COMM_LAYER_FX10_FALSE@@MADI_COMM_LAYER_GASNET_FALSE@@MADI_COMM_LAYER_IBV_FALSE@@MADI_COMM_LAYER_MPI3_FALSE@@MADI_COMM_LAYER_SEQ_FALSE@@MADI_COMM_LAYER_SHMEM_TRUE@am__objects_1 = shmem/libmcomm_la-comm_memory.lo \
 @MADI_COMM_LAYER_FX10_FALSE@@MADI_COMM_LAYER_GASNET_FALSE@@MADI_COMM_LAYER_IBV_FALSE@@MADI_COMM_LAYER_MPI3_FALSE@@MADI_COMM_LAYER_SEQ_FALSE@@MADI_COMM_LAYER_SHMEM_TRUE@	shmem/libmcomm_la-comm_base.lo
@@ -158,11 +157,9 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @MADI_COMM_LAYER_FX10_TRUE@am__objects_1 =  \
 @MADI_COMM_LAYER_FX10_TRUE@	fjmpi/libmcomm_la-comm_memory.lo \
 @MADI_COMM_LAYER_FX10_TRUE@	fjmpi/libmcomm_la-comm_base.lo
-@MADI_COMM_LAYER_GASNET_TRUE@am__objects_2 =  \
-@MADI_COMM_LAYER_GASNET_TRUE@	libmcomm_la-gasnet_ext.lo
 am_libmcomm_la_OBJECTS = libmcomm_la-options.lo \
 	libmcomm_la-process_config.lo libmcomm_la-comm_system.lo \
-	libmcomm_la-madm_comm.lo $(am__objects_1) $(am__objects_2)
+	libmcomm_la-madm_comm.lo $(am__objects_1)
 libmcomm_la_OBJECTS = $(am_libmcomm_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -392,8 +389,13 @@ top_srcdir = @top_srcdir@
 @MADI_COMM_LAYER_SHMEM_TRUE@    shmem/comm_base.cc
 
 lib_LTLIBRARIES = libmcomm.la
-libmcomm_la_SOURCES = options.cc process_config.cc comm_system.cc \
-	madm_comm.cc $(sources) $(am__append_1)
+libmcomm_la_SOURCES = \
+    options.cc \
+    process_config.cc \
+    comm_system.cc \
+    madm_comm.cc \
+    $(sources)
+
 libmcomm_la_CPPFLAGS = -I$(top_srcdir)/comm/include \
                         -I$(top_srcdir)/comm/include/madm \
                         -I$(top_srcdir)/comm/src \
@@ -553,7 +555,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmcomm_la-comm_system.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmcomm_la-gasnet_ext.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmcomm_la-madm_comm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmcomm_la-options.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmcomm_la-process_config.Plo@am__quote@
@@ -697,13 +698,6 @@ shmem/libmcomm_la-comm_base.lo: shmem/comm_base.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='shmem/comm_base.cc' object='shmem/libmcomm_la-comm_base.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmcomm_la_CPPFLAGS) $(CPPFLAGS) $(libmcomm_la_CXXFLAGS) $(CXXFLAGS) -c -o shmem/libmcomm_la-comm_base.lo `test -f 'shmem/comm_base.cc' || echo '$(srcdir)/'`shmem/comm_base.cc
-
-libmcomm_la-gasnet_ext.lo: gasnet_ext.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmcomm_la_CPPFLAGS) $(CPPFLAGS) $(libmcomm_la_CXXFLAGS) $(CXXFLAGS) -MT libmcomm_la-gasnet_ext.lo -MD -MP -MF $(DEPDIR)/libmcomm_la-gasnet_ext.Tpo -c -o libmcomm_la-gasnet_ext.lo `test -f 'gasnet_ext.cc' || echo '$(srcdir)/'`gasnet_ext.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libmcomm_la-gasnet_ext.Tpo $(DEPDIR)/libmcomm_la-gasnet_ext.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='gasnet_ext.cc' object='libmcomm_la-gasnet_ext.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libmcomm_la_CPPFLAGS) $(CPPFLAGS) $(libmcomm_la_CXXFLAGS) $(CXXFLAGS) -c -o libmcomm_la-gasnet_ext.lo `test -f 'gasnet_ext.cc' || echo '$(srcdir)/'`gasnet_ext.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo

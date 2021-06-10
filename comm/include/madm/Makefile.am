@@ -11,8 +11,10 @@ otherinclude_HEADERS = \
     fetch_and_add.h \
     id_pool.h \
     madm_comm-decls.h \
+    madm_comm-cdecls.h \
     madm_comm-inl.h \
     madm_comm_config.h \
+    madm_comm_acconfig.h \
     options.h \
     process_config.h \
     threadsafe.h \
