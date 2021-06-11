@@ -8,9 +8,11 @@ namespace dtbb {
 
     // these functions have similar semantics to the functions in Intel TBB
 
-    template <class Iterator, class F, class... Args>
-    void parallel_for(Iterator first, Iterator last,
-                      F&& f);
+    template <class Iterator, class F>
+    void parallel_for(Iterator first, Iterator last, F&& f);
+
+    template <class Index, class F>
+    void parallel_for(Index first, Index last, Index grainsize, F&& f);
 
     // TODO: implement
     template <class Range, class F>
@@ -64,9 +66,8 @@ namespace madm {
 namespace uth {
 namespace dtbb {
 
-    template <class Iterator, class F, class... Args>
-    void parallel_for(Iterator first, Iterator last,
-                      F&& f)
+    template <class Iterator, class F>
+    void parallel_for(Iterator first, Iterator last, F&& f)
     {
         if (last - first == 1) {
             f(first);
@@ -75,6 +76,21 @@ namespace dtbb {
 
             thread<void> th([=] { parallel_for(first, mid, f); });
             parallel_for(mid, last, f);
+
+            th.join();
+        }
+    }
+
+    template <class Index, class F>
+    void parallel_for(Index first, Index last, Index grainsize, F&& f)
+    {
+        if (last - first <= grainsize) {
+            f(first, last);
+        } else {
+            auto mid = (first + last) / 2;
+
+            thread<void> th([=] { parallel_for(first, mid, grainsize, f); });
+            parallel_for(mid, last, grainsize, f);
 
             th.join();
         }
