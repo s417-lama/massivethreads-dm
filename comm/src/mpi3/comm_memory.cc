@@ -32,6 +32,7 @@ namespace comm {
         : max_procs_per_node_(options.n_procs_per_node)
         , n_procs_per_node_(0)
         , wins_(256, MPI_WIN_NULL)
+        , size_(0)
         , rdma_addrs_(256, NULL)
         , rdma_idx_(0)
         , rdma_ids_(CMR_MAX_BITS - CMR_BASE_BITS, 256)
