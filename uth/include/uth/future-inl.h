@@ -109,7 +109,12 @@ namespace madi {
         MADI_DPUTSP2("DIST SPIN LOCK");
 
         uint64_t *lock = locks_[target];
-        uint64_t v = c_.fetch_and_add(lock, 1UL, target);
+        uint64_t v;
+        if (target == c_.get_pid()) {
+          v = comm::threadsafe::fetch_and_add(lock, 1UL);
+        } else {
+          v = c_.fetch_and_add(lock, 1UL, target);
+        }
         return (v == 0UL);
     }
 
@@ -159,7 +164,12 @@ namespace madi {
         MADI_DPUTSP2("DIST SPIN UNLOCK");
 
         uint64_t *lock = locks_[target];
-        c_.put_value(lock, 0UL, target);
+        if (target == c_.get_pid()) {
+          comm::threadsafe::wbarrier();
+          *lock = 0UL;
+        } else {
+          c_.put_value(lock, 0UL, target);
+        }
 
         MADI_DPUTSP2("DIST SPIN UNLOCK DONE");
     }
