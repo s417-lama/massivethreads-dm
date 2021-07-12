@@ -18,7 +18,7 @@ done
 
 JOB_COMMANDS="
 (
-  ISOLA_ROOT=/work/gc64/c64050/.isola source ./scripts/envs_obcx.bash
+  source scripts/envs.bash
   isola create -o test bash -c \""${COMMANDS[@]}"\"
 )
 "
