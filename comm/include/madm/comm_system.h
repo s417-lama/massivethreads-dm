@@ -133,6 +133,18 @@ namespace comm {
         T fetch_and_add(T *dst, T value, int target)
         { return c_.fetch_and_add(dst, value, target, *config_); }
 
+        void lock_init(lock_t* lp)
+        { c_.lock_init(lp, *config_); }
+
+        bool trylock(lock_t* lp, int target)
+        { return c_.trylock(lp, target, *config_); }
+
+        void lock(lock_t* lp, int target)
+        { c_.lock(lp, target, *config_); }
+
+        void unlock(lock_t* lp, int target)
+        { c_.unlock(lp, target, *config_); }
+
         void request(int tag, void *p, size_t size, int pid)
         { c_.request(tag, p, size, pid, *config_); }
 

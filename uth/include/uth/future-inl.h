@@ -25,7 +25,7 @@ namespace uth {
     }
 
     template <class T>
-    inline future<T>::future(int id, pid_t pid)
+    inline future<T>::future(int id, madi::uth_pid_t pid)
         : id_(id)
         , pid_(pid)
     {
@@ -96,7 +96,7 @@ namespace madi {
         uth_pid_t me = c.get_pid();
 
         locks_ = (uint64_t **)c_.malloc_shared(sizeof(uint64_t));
-        *locks_[me] = 0UL;
+        c.lock_init(locks_[me]);
     }
 
     inline dist_spinlock::~dist_spinlock()
@@ -109,13 +109,7 @@ namespace madi {
         MADI_DPUTSP2("DIST SPIN LOCK");
 
         uint64_t *lock = locks_[target];
-        uint64_t v;
-        if (target == c_.get_pid()) {
-          v = comm::threadsafe::fetch_and_add(lock, 1UL);
-        } else {
-          v = c_.fetch_and_add(lock, 1UL, target);
-        }
-        return (v == 0UL);
+        return c_.trylock(lock, target);
     }
 
     inline double random_double()
@@ -163,19 +157,14 @@ namespace madi {
     {
         MADI_DPUTSP2("DIST SPIN UNLOCK");
 
-        uint64_t *lock = locks_[target];
-        if (target == c_.get_pid()) {
-          comm::threadsafe::wbarrier();
-          *lock = 0UL;
-        } else {
-          c_.put_value(lock, 0UL, target);
-        }
+        uth_comm::lock_t *lock = locks_[target];
+        c_.unlock(lock, target);
 
         MADI_DPUTSP2("DIST SPIN UNLOCK DONE");
     }
 
     template <class T>
-    dist_pool<T>::dist_pool(uth_comm& c, int size) :
+    inline dist_pool<T>::dist_pool(uth_comm& c, int size) :
         c_(c),
         size_(size),
         locks_(c),
@@ -184,21 +173,21 @@ namespace madi {
     {
         uth_pid_t me = c.get_pid();
 
-        idxes_ = (uint64_t **)c_.malloc_shared(sizeof(uint64_t));
+        idxes_ = (uth_comm::lock_t **)c_.malloc_shared(sizeof(uth_comm::lock_t));
         data_ = (T **)c_.malloc_shared(sizeof(T) * size);
 
         *idxes_[me] = 0UL;
     }
 
     template <class T>
-    dist_pool<T>::~dist_pool()
+    inline dist_pool<T>::~dist_pool()
     {
         c_.free_shared((void **)idxes_);
         c_.free_shared((void **)data_);
     }
 
     template <class T>
-    bool dist_pool<T>::empty(uth_pid_t target)
+    inline bool dist_pool<T>::empty(uth_pid_t target)
     {
         uth_pid_t me = c_.get_pid();
 
@@ -217,7 +206,7 @@ namespace madi {
     }
 
     template <class T>
-    bool dist_pool<T>::push_remote(T& v, uth_pid_t target)
+    inline bool dist_pool<T>::push_remote(T& v, uth_pid_t target)
     {
         locks_.lock(target);
         
@@ -246,21 +235,21 @@ namespace madi {
     }
 
     template <class T>
-    void dist_pool<T>::begin_pop_local()
+    inline void dist_pool<T>::begin_pop_local()
     {
         uth_pid_t target = c_.get_pid();
         locks_.lock(target);
     }
 
     template <class T>
-    void dist_pool<T>::end_pop_local()
+    inline void dist_pool<T>::end_pop_local()
     {
         uth_pid_t target = c_.get_pid();
         locks_.unlock(target);
     }
 
     template <class T>
-    bool dist_pool<T>::pop_local(T *buf)
+    inline bool dist_pool<T>::pop_local(T *buf)
     {
         uth_pid_t target = c_.get_pid();
 
@@ -385,7 +374,7 @@ namespace madi {
     }
 
     template <class T>
-    void future_pool::fill(madm::uth::future<T> f, T& value)
+    inline void future_pool::fill(madm::uth::future<T> f, T& value)
     {
         uth_comm& c = madi::proc().com();
         uth_pid_t me = c.get_pid();
@@ -406,7 +395,7 @@ namespace madi {
     }
 
     template <class T>
-    bool future_pool::synchronize(madm::uth::future<T> f, T *value)
+    inline bool future_pool::synchronize(madm::uth::future<T> f, T *value)
     {
         uth_comm& c = madi::proc().com();
         uth_pid_t me = c.get_pid();

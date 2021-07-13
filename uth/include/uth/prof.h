@@ -127,7 +127,7 @@ namespace madi {
                                          + all_failed_steals_empty;
                 size_t all_steals = all_success_steals + all_failed_steals;
 
-                int me = ::madm::uth::get_pid();
+                int me = madi::comm::get_pid();
                 if (me == 0) {
                     printf("stack_usage = %zu,\n"
                            "n_steals = %zu, n_success_steals = %zu, "
@@ -150,7 +150,7 @@ namespace madi {
 
             if (uth_options.steal_log) {
                 char fname[PATH_MAX];
-                sprintf(fname, "steal.%03ld.out", madm::uth::get_pid());
+                sprintf(fname, "steal.%03ld.out", madi::comm::get_pid());
 
                 FILE *fp = fopen(fname, "w");
 

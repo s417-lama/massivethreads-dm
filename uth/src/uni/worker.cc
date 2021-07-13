@@ -156,7 +156,8 @@ void resume_saved_context(saved_context *sctx, saved_context *next_sctx)
 
 void worker::do_scheduler_work()
 {
-    taskq_entry *entry = taskq_->pop();
+    uth_comm& c = madi::proc().com();
+    taskq_entry *entry = taskq_->pop(c);
 
     // call a user-specified polling function
     madi::proc().call_user_poll();
@@ -276,7 +277,7 @@ void madi_worker_do_resume_remote_context_1(uth_comm& c,
     e.me = c.get_pid();
     e.victim = victim;
 
-    taskq->steal_unlock(c, victim);
+    taskq->unlock(c, victim);
 
     long t2 = rdtsc();
     e.unlock = t2 - t1;
@@ -463,7 +464,7 @@ bool worker::steal_with_lock(taskq_entry *entry,
     long t2 = rdtsc();
 
     bool success;
-    success = taskq->steal_trylock(c, target);
+    success = taskq->trylock(c, target);
 
     long t3 = rdtsc();
     g_prof->current_steal().lock = t3 - t2;
@@ -481,7 +482,7 @@ bool worker::steal_with_lock(taskq_entry *entry,
 
     if (!success) {
         MADI_DPUTSR1("steal task empty");
-        taskq->steal_unlock(c, target);
+        taskq->unlock(c, target);
 
         long t5 = rdtsc();
         g_prof->current_steal().unlock = t5 - t4;
@@ -578,12 +579,13 @@ void handle_steal_reply(int tag, int pid, void *p, size_t size, aminfo *info)
 void handle_steal_request(int tag, int pid, void *p, size_t size, aminfo *info)
 {
     uth_comm& c = madi::proc().com();
+    pid_t me = c.get_pid();
     worker& w = madi::current_worker();
     taskque& taskq = w.taskq();
 
     steal_req *req = reinterpret_cast<steal_req *>(p);
 
-    bool success = taskq.local_trylock();
+    bool success = taskq.trylock(c, me);
 
     if (!success) {
         steal_rep rep;
@@ -607,14 +609,14 @@ void handle_steal_request(int tag, int pid, void *p, size_t size, aminfo *info)
         rep->entry   = entry;
         memcpy(rep->frames, entry.frame_base, entry.frame_size);
 
-        taskq.local_unlock();
+        taskq.unlock(c, me);
 
         // reply msg
         c.amreply(uth_comm::AM_STEAL_REP, rep, rep_size, info);
 
         free(rep);
     } else {
-        taskq.local_unlock();
+        taskq.unlock(c, me);
 
         steal_rep rep;
         rep.req_ptr = req->req_ptr;

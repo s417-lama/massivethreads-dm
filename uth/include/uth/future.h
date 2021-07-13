@@ -44,14 +44,13 @@ namespace uth {
 #include <madm_misc.h>
 #include <vector>
 #include <cstdint>
+#include "uth_comm.h"
 
 namespace madi {
 
-    class uth_comm;
-
     class dist_spinlock {
         uth_comm& c_;
-        uint64_t **locks_;
+        uth_comm::lock_t **locks_;
     public:
         dist_spinlock(uth_comm& c);
         ~dist_spinlock();

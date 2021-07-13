@@ -133,6 +133,26 @@ namespace madi {
         return comm::fetch_and_add<uint64_t>(dst, value, target);
     }
 
+    void uth_comm::lock_init(lock_t* lp)
+    {
+        return comm::lock_init(lp);
+    }
+
+    bool uth_comm::trylock(lock_t* lp, uth_pid_t target)
+    {
+        return comm::trylock(lp, target);
+    }
+
+    void uth_comm::lock(lock_t* lp, uth_pid_t target)
+    {
+        comm::lock(lp, target);
+    }
+
+    void uth_comm::unlock(lock_t* lp, uth_pid_t target)
+    {
+        comm::unlock(lp, target);
+    }
+
     void ** uth_comm::reg_mmap_shared(void *addr, size_t size)
     {
         // NOTE: this function can be called at a time

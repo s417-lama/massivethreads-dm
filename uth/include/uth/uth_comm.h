@@ -1,7 +1,6 @@
 #ifndef MADI_UTH_COMM_H
 #define MADI_UTH_COMM_H
 
-#include <uth-cxx-decls.h>
 #include "uth_config.h"
 #include "madi.h"
 #include "debug.h"
@@ -28,7 +27,6 @@ namespace madi {
         bool initialized_;
 
     public:
-       
         uth_comm() : rdma_id_(-1), coll_(NULL),
                      buffer_size_(0), buffer_(NULL),
                      initialized_(false) {}
@@ -67,6 +65,13 @@ namespace madi {
         void swap(int *dst, int *src, uth_pid_t target);
         uint64_t fetch_and_add(uint64_t *dst, uint64_t value,
                                uth_pid_t target);
+
+        using lock_t = comm::lock_t;
+
+        void lock_init(lock_t* lp);
+        bool trylock(lock_t* lp, uth_pid_t target);
+        void lock(lock_t* lp, uth_pid_t target);
+        void unlock(lock_t* lp, uth_pid_t target);
 
         void **reg_mmap_shared(void *addr, size_t size);
         void reg_munmap_shared(void **ptrs, void *addr, size_t size);

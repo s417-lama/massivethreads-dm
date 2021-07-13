@@ -7,7 +7,7 @@
 #include "context.h"
 #include "../debug.h"
 #include "../madi.h"
-#include "uth.h"
+#include "../prof.h"
 #include "../madi-inl.h"
 #include "../iso_space-inl.h"
 
@@ -183,6 +183,7 @@ namespace madi {
         MADI_CONTEXT_ASSERT(&ctx);
 
         worker& w0 = madi::current_worker();
+        uth_comm& c = madi::proc().com();
 
         MADI_DPUTS3("parent_ctx = %p", ctx.parent);
 
@@ -212,7 +213,7 @@ namespace madi {
 
             MADI_CHECK(entry.frame_size < 128 * 1024);
 
-            w0.taskq_->push(entry);
+            w0.taskq_->push(c, entry);
         }
 
         MADI_UTH_COMM_POLL_AT_CRAETE();
@@ -241,7 +242,7 @@ namespace madi {
         worker& w1 = madi::current_worker();
 
         // pop the parent thread
-        taskq_entry *entry = w1.taskq_->pop();
+        taskq_entry *entry = w1.taskq_->pop(c);
  
         if (entry != NULL) {
             // the entry is not stolen

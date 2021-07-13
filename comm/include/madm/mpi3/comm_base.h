@@ -7,6 +7,7 @@
 #include "../allocator.h"
 #include "madm_misc.h"
 #include "madm_debug.h"
+#include "mpi.h"
 
 #include <cstdint>
 #include <cerrno>
@@ -16,6 +17,9 @@ namespace madi {
 namespace comm {
 
     void poll();
+
+    using lock_t = uint64_t;
+    constexpr MPI_Datatype MPI_LOCK_T = MPI_UINT64_T;
 
     typedef allocator<comm_memory> comm_allocator;
 
@@ -87,6 +91,11 @@ namespace comm {
 
         template <class T>
         T fetch_and_add(T *dst, T value, int target, process_config& config);
+
+        void lock_init(lock_t* lp, process_config& config);
+        bool trylock(lock_t* lp, int target, process_config& config);
+        void lock(lock_t* lp, int target, process_config& config);
+        void unlock(lock_t* lp, int target, process_config& config);
 
         void request(int tag, void *p, size_t size, int pid,
                      process_config& config)

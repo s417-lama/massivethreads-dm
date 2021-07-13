@@ -269,6 +269,47 @@ namespace comm {
                                                  process_config&);
     template unsigned long comm_base::fetch_and_add<unsigned long>(unsigned long *, unsigned long, int,
                                                                    process_config&);
-}
-}
 
+    void comm_base::lock_init(lock_t* lp, process_config& config)
+    {
+        *lp = 0;
+    }
+
+    bool comm_base::trylock(lock_t* lp, int target,
+                             process_config& config)
+    {
+        MPI_Win win;
+        size_t target_disp;
+        cmr_->translate(-1, lp, sizeof(lock_t), target, &target_disp, &win);
+
+        constexpr lock_t inc = 1;
+        lock_t result;
+        MPI_Fetch_and_op(&inc, &result, MPI_LOCK_T, target, target_disp, MPI_SUM, win);
+        MPI_Win_flush(target, win);
+
+        return result == 0;
+    }
+
+    void comm_base::lock(lock_t* lp, int target,
+                         process_config& config)
+    {
+        while (!trylock(lp, target, config)) {
+            int tag, pid;
+            poll(&tag, &pid, config);
+        };
+    }
+
+    void comm_base::unlock(lock_t* lp, int target,
+                           process_config& config)
+    {
+        MPI_Win win;
+        size_t target_disp;
+        cmr_->translate(-1, lp, sizeof(lock_t), target, &target_disp, &win);
+
+        constexpr lock_t zero = 0;
+        lock_t result;
+        MPI_Fetch_and_op(&zero, &result, MPI_LOCK_T, target, target_disp, MPI_REPLACE, win);
+        MPI_Win_flush(target, win);
+    }
+}
+}

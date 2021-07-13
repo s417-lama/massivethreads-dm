@@ -30,8 +30,8 @@ namespace comm {
     extern globals g;
 
     template <class... Args>
-    void start(void (*f)(int, char **, Args...), int& argc, char **&argv,
-               Args... args)
+    inline void start(void (*f)(int, char **, Args...), int& argc, char **&argv,
+                      Args... args)
     {
         g.comm->start(f, argc, argv, args...);
     }
@@ -52,45 +52,65 @@ namespace comm {
     }
 
     template <class T>
-    T ** coll_rma_malloc(size_t size)
+    inline T ** coll_rma_malloc(size_t size)
     {
         return g.comm->coll_malloc<T>(size);
     }
 
     template <class T>
-    void coll_rma_free(T **ptrs)
+    inline void coll_rma_free(T **ptrs)
     {
         g.comm->coll_free(ptrs);
     }
 
     template <class T>
-    T * rma_malloc(size_t size)
+    inline T * rma_malloc(size_t size)
     {
         return g.comm->malloc<T>(size);
     }
 
     template <class T>
-    void rma_free(T *p)
+    inline void rma_free(T *p)
     {
         g.comm->free(p);
     }
 
     template <class T>
-    void put_value(T *dst, T value, pid_t target)
+    inline void put_value(T *dst, T value, pid_t target)
     {
         g.comm->put_value(dst, value, target);
     }
 
     template <class T>
-    T get_value(T *src, pid_t target)
+    inline T get_value(T *src, pid_t target)
     {
         return g.comm->get_value(src, target);
     }
 
     template <class T>
-    T fetch_and_add(T *dst, T value, pid_t target)
+    inline T fetch_and_add(T *dst, T value, pid_t target)
     {
         return g.comm->fetch_and_add(dst, value, target);
+    }
+
+    inline void lock_init(lock_t* lp)
+    {
+        g.comm->lock_init(lp);
+    }
+
+    inline bool trylock(lock_t* lp, int target)
+    {
+        return g.comm->trylock(lp, target);
+    }
+
+    inline void lock(lock_t* lp, int target)
+    {
+        g.comm->lock(lp, target);
+    }
+
+    inline void unlock(lock_t* lp, int target)
+    {
+        g.comm->unlock(lp, target);
     }
 
 }

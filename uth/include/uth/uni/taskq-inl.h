@@ -9,69 +9,15 @@ namespace madi {
 
     typedef comm::threadsafe threadsafe;
 
-    inline void local_taskque::push(const taskq_entry& th) {
-        deque_.push_back(th);
-    }
-
-    inline bool local_taskque::pop(taskq_entry *th) {
-        if (deque_.empty()) {
-            return false;
-        } else {
-            *th = deque_.back();
-            deque_.pop_back();
-            return true;
-        }
-    }
-
-    inline bool local_taskque::steal(taskq_entry *th) {
-        if (deque_.empty()) {
-            return false;
-        } else {
-            *th = deque_.front();
-            deque_.pop_front();
-            return true;
-        }
-    }
-    
-    inline bool global_taskque::local_trylock()
-    {
-        uint64_t one = 1;
-        uint64_t zero = 0;
-        return threadsafe::fetch_and_add(&lock_, one) == zero;
-    }
-
-    inline void global_taskque::local_lock()
-    {
-        while (!local_trylock())
-            MADI_UTH_COMM_POLL();
-    }
-
-    inline void global_taskque::local_unlock()
-    {
-        comm::threadsafe::wbarrier();
-        lock_ = 0UL;
-    }
-
-    inline bool global_taskque::remote_trylock(uth_comm& c, uth_pid_t target)
-    {
-        MADI_DPUTSY2("TASKQ REMOTE TRYLOCK");
-
-        return c.fetch_and_add((uint64_t *)&lock_, 1UL, target) == 0UL;
-    }
-
-    inline void global_taskque::remote_unlock(uth_comm& c, uth_pid_t target)
-    {
-        c.put_value((uint64_t *)&lock_, 0UL, target);
-    }
-
-    inline void global_taskque::push(const taskq_entry& entry)
+    inline void global_taskque::push(uth_comm& c, const taskq_entry& entry)
     {
         int t = top_;
 
         comm::threadsafe::rbarrier();
 
         if (t == n_entries_) {
-            local_lock();
+            pid_t me = c.get_pid();
+            c.lock(&lock_, me);
 
             if (base_ == 0)
                 madi::die("task queue overflow");
@@ -94,7 +40,7 @@ namespace madi {
 
             t = top_;
 
-            local_unlock();
+            c.unlock(&lock_, me);
         }
 
         entries_[t] = entry;
@@ -106,13 +52,12 @@ namespace madi {
         MADI_DPUTS3("top = %d", top_);
     }
 
-    inline taskq_entry * global_taskque::pop()
+    inline taskq_entry * global_taskque::pop(uth_comm& c)
     {
 // pop operation must block until a thief is acquiring lock_.
 //         // quick check
 //         if (top_ <= base_)
 //             return NULL;
-
         int t = top_ - 1;
         top_ = t;
 
@@ -124,7 +69,8 @@ namespace madi {
             return &entries_[t];
         }
 
-        local_lock();
+        pid_t me = c.get_pid();
+        c.lock(&lock_, me);
 
         b = base_;
 
@@ -138,20 +84,16 @@ namespace madi {
             result = NULL;
         }
 
-        local_unlock();
+        c.unlock(&lock_, me);
 
         return result;
     }
 
-#if 1
     inline bool global_taskque::local_steal(taskq_entry *entry)
     {
         // quick check
         if (top_ - base_ <= 0)
             return false;
-
-//        if (!local_trylock())
-//            return false;
 
         int b = base_;
         base_ = b + 1;
@@ -169,11 +111,8 @@ namespace madi {
             result = false;
         }
 
-//        local_unlock();
-        
         return result;
     }
-#endif
 
     inline bool global_taskque::empty(uth_comm& c, uth_pid_t target,
                                       global_taskque *taskq_buf)
@@ -184,14 +123,14 @@ namespace madi {
         return self.base_ >= self.top_;
     }
 
-    inline bool global_taskque::steal_trylock(uth_comm& c, uth_pid_t target)
+    inline bool global_taskque::trylock(uth_comm& c, uth_pid_t target)
     {
-        return remote_trylock(c, target);
+        return c.trylock(&lock_, target);
     }
 
-    inline void global_taskque::steal_unlock(uth_comm& c, uth_pid_t target)
+    inline void global_taskque::unlock(uth_comm& c, uth_pid_t target)
     {
-        return remote_unlock(c, target);
+        c.unlock(&lock_, target);
     }
 
     inline bool global_taskque::steal(uth_comm& c,

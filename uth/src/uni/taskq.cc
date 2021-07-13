@@ -4,20 +4,9 @@
 
 using namespace madi;
 
-void local_taskque::initialize(size_t capacity) {
-    // touch OS pages
-    deque_.resize(capacity);
-    deque_.clear();
-}
-
-void local_taskque::finalize() {
-    deque_.resize(0);
-}
-
 global_taskque::global_taskque() :
     top_(0), base_(0),
-    n_entries_(0), entries_(NULL),
-    lock_(0)
+    n_entries_(0), entries_(NULL)
 {
 }
 
@@ -36,6 +25,7 @@ void global_taskque::initialize(uth_comm& c, taskq_entry *entries,
     n_entries_ = (int)n_entries;
     entries_ = entries;
 
+    c.lock_init(&lock_);
 }
 
 void global_taskque::finalize(uth_comm& c)
@@ -45,4 +35,3 @@ void global_taskque::finalize(uth_comm& c)
     n_entries_ = 0;
     entries_ = NULL;
 }
-
