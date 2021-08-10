@@ -19,7 +19,7 @@ namespace comm {
     void poll();
 
     using lock_t = uint64_t;
-    constexpr MPI_Datatype MPI_LOCK_T = MPI_UINT64_T;
+    const MPI_Datatype MPI_LOCK_T = MPI_UINT64_T;
 
     typedef allocator<comm_memory> comm_allocator;
 
