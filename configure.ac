@@ -219,6 +219,7 @@ AC_CONFIG_FILES([Makefile
                  comm/include/madm/gasnet/Makefile
                  comm/include/madm/ibv/Makefile
                  comm/include/madm/fjmpi/Makefile
+                 comm/include/mlog/Makefile
                  comm/src/Makefile
                  comm/examples/Makefile
                  comm/examples/one_sided/Makefile

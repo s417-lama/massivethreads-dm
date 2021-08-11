@@ -26,6 +26,8 @@ elif [[ $(hostname) =~ "ito" ]] || [[ $(hostname) =~ "sca" ]]; then
 
 else
   export MACHINE_NAME=local
+
+  export PATH=$HOME/opt/openmpi5/bin:$PATH
 fi
 
 export MY_ENVS_LOADED=true

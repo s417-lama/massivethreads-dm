@@ -2,6 +2,7 @@
 #define MADI_COMM_INL_H
 
 #include "madm_misc.h"
+#include "madm_logger.h"
 #include "comm_system.h"
 #include "id_pool.h"
 
