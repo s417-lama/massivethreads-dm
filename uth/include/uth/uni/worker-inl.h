@@ -282,8 +282,6 @@ namespace madi {
     template <class F, class... Args>
     void worker::fork(F f, Args... args)
     {
-        logger::checkpoint<logger::kind::THREAD>();
-
         worker& w0 = *this;
 
         thread_storage_holder& tls = *w0.tls_;
@@ -331,8 +329,6 @@ namespace madi {
 
             MADI_DPUTSR1("resume done: %d", g_prof->steals_idx);
         }
-
-        logger::checkpoint<logger::kind::SCHED>();
     }
 
     void resume_saved_context(saved_context *sctx, saved_context *next_sctx);
@@ -455,8 +451,6 @@ namespace madi {
 
         // save current state
         MADI_SAVE_CONTEXT_WITH_CALL(prev_ctx, fp, (void *)f, (void *)&arg);
-
-        logger::checkpoint<logger::kind::THREAD>();
 
         if (!w0.is_main_task_)
             MADI_CONTEXT_ASSERT_WITHOUT_PARENT(prev_ctx);

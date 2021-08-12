@@ -16,10 +16,14 @@ namespace uth {
     thread<T>::thread(const F& f, Args... args)
         : future_()
     {
+        madi::logger::checkpoint<madi::logger::kind::THREAD>();
+
         madi::worker& w = madi::current_worker();
         future_ = future<T>::make(w);
 
         w.fork(start<F, Args...>, future_, f, args...);
+
+        madi::logger::checkpoint<madi::logger::kind::SCHED>();
     }
 
     template <class T>
@@ -52,11 +56,14 @@ namespace uth {
         explicit thread(const F& f, Args... args)
             : future_()
         {
+            madi::logger::checkpoint<madi::logger::kind::THREAD>();
+
             madi::worker& w = madi::current_worker();
             future_ = future<long>::make(w);
 
             w.fork(start<F, Args...>, future_, f, args...);
 
+            madi::logger::checkpoint<madi::logger::kind::SCHED>();
         }
 
         // copy and move constrs
@@ -79,8 +86,12 @@ namespace uth {
     template <class F, class... Args>
     static void fork(F&& f, Args... args)
     {
+        madi::logger::checkpoint<madi::logger::kind::THREAD>();
+
         madi::worker& w = madi::current_worker();
         w.fork(f, args...);
+
+        madi::logger::checkpoint<madi::logger::kind::SCHED>();
     }
 
     template <class F, class... Args>

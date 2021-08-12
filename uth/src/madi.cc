@@ -23,18 +23,18 @@ namespace madi {
 
     void barrier()
     {
+        logger::checkpoint<logger::kind::THREAD>();
+
         uth_comm& c = madi::proc().com();
         worker& w = madi::current_worker();
-
-        logger::checkpoint<logger::kind::THREAD>();
 
         while (!c.barrier_try())
             w.do_scheduler_work();
 
-        logger::checkpoint<logger::kind::SCHED>();
-
         // update max stack usage
         g_prof->max_stack_usage = w.max_stack_usage();
+
+        logger::checkpoint<logger::kind::SCHED>();
     }
 
     void native_barrier()
