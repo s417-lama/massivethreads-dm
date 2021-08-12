@@ -1,6 +1,7 @@
 #include "process.h"
 
 #include <cstdio>
+#include "madm_logger.h"
 #include "uth_options.h"
 #include "iso_space-inl.h"
 #include "madi-inl.h"
@@ -62,8 +63,6 @@ namespace madi {
         MADI_DPUTS2("iso-address space finalized");
     }
 
-    static const char test_str[] = "test";
-
     bool process::initialize(int& argc, char **& argv)
     {
         debug_out_ = stderr;
@@ -78,7 +77,7 @@ namespace madi {
             return false;
 
         logger::init(comm::get_pid());
-        logger::begin_tl<test_str>();
+        logger::begin_tl<logger::TEST>();
 
         MADI_DPUTS2("communication layer initialized");
 
@@ -98,7 +97,7 @@ namespace madi {
 
         MADI_DPUTS2("communication layer finalized");
 
-        logger::end_tl<test_str>();
+        logger::end_tl<logger::TEST>();
         logger::flush();
 
         uth_options_finalize();

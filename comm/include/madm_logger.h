@@ -12,6 +12,12 @@
 namespace madi {
 
     class logger {
+    public:
+        enum kind {
+            TEST
+        };
+
+    private:
 #ifndef MADM_LOGGER_DEFAULT_SIZE
 #define MADM_LOGGER_DEFAULT_SIZE (1 << 20)
 #endif
@@ -28,30 +34,32 @@ namespace madi {
             return my_instance;
         }
 
-        static constexpr bool kind_equal_(const char* a, const char* b) {
-            return *a == *b && (*a == '\0' || kind_equal_(a + 1, b + 1));
+        static constexpr bool kind_included_(enum kind k, enum kind kinds[], int n) {
+            return n > 0 && (k == *kinds || kind_included_(k, kinds + 1, n - 1));
         }
 
-        static constexpr bool kind_included_(const char* kind, const char* const kinds[], int n) {
-            return n > 0 && (kind_equal_(kind, *kinds) || kind_included_(kind, kinds + 1, n - 1));
-        }
-
-        static constexpr bool is_valid_kind_(const char* kind) {
+        static constexpr bool is_valid_kind_(enum kind k) {
 #ifndef MADM_LOGGER_DISABLED_KINDS
 #define MADM_LOGGER_DISABLED_KINDS {}
 #endif
-            constexpr const char* disabled_kinds[] = MADM_LOGGER_DISABLED_KINDS;
+             enum kind disabled_kinds[] = MADM_LOGGER_DISABLED_KINDS;
 #undef MADM_LOGGER_DISABLED_KINDS
-            return !kind_included_(kind, disabled_kinds, sizeof(disabled_kinds) / sizeof(*disabled_kinds));
+            return !kind_included_(k, disabled_kinds, sizeof(disabled_kinds) / sizeof(*disabled_kinds));
         }
 
-        template <const char* kind>
+        static constexpr const char* kind_name(enum kind k) {
+            switch (k) {
+                case TEST: return "test";
+            }
+        }
+
+        template <enum kind k>
         static void* logger_decoder_tl_(FILE* stream, int _rank0, int _rank1, void* buf0, void* buf1) {
             uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t);
             uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t);
 
             logger& lgr = get_instance_();
-            fprintf(stream, "%d,%lu,%d,%lu,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind);
+            fprintf(stream, "%d,%lu,%d,%lu,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name(k));
             return buf1;
         }
 
@@ -87,21 +95,21 @@ namespace madi {
             mlog_clear_all(&lgr.md_);
         }
 
-        template <const char* kind>
+        template <enum kind k>
         static inline void begin_tl() {
-            if (is_valid_kind_(kind)) {
+            if (is_valid_kind_(k)) {
                 logger& lgr = get_instance_();
                 uint64_t t = global_clock::get_time();
                 lgr.bp_ = MLOG_BEGIN(&lgr.md_, 0, t);
             }
         }
 
-        template <const char* kind>
+        template <enum kind k>
         static inline void end_tl() {
-            if (is_valid_kind_(kind)) {
+            if (is_valid_kind_(k)) {
                 logger& lgr = get_instance_();
                 uint64_t t = global_clock::get_time();
-                auto fn = &logger_decoder_tl_<kind>;
+                auto fn = &logger_decoder_tl_<k>;
                 MLOG_END(&lgr.md_, 0, lgr.bp_, fn, t);
             }
         }
@@ -110,9 +118,9 @@ namespace madi {
         static void flush() {}
         static void warmup() {}
         static void clear() {}
-        template <const char* kind>
+        template <enum kind k>
         static inline void begin_tl() {}
-        template <const char* kind>
+        template <enum kind k>
         static inline void end_tl() {}
 #endif
 #undef MADM_LOGGER_ENABLE
