@@ -13,8 +13,13 @@ namespace madi {
 
     class logger {
     public:
-        enum kind {
-            TEST
+        using begin_data = void*;
+        enum class kind {
+            INIT,
+            TEST,
+            SCHED,
+            THREAD,
+            OTHER
         };
 
     private:
@@ -26,7 +31,7 @@ namespace madi {
 
         mlog_data_t md_;
         int rank_;
-        void* bp_;
+        begin_data bp_ = nullptr;
         FILE* stream_;
 
         static inline logger& get_instance_() {
@@ -34,26 +39,31 @@ namespace madi {
             return my_instance;
         }
 
-        static constexpr bool kind_included_(enum kind k, enum kind kinds[], int n) {
+        static constexpr bool kind_included_(kind k, kind kinds[], int n) {
             return n > 0 && (k == *kinds || kind_included_(k, kinds + 1, n - 1));
         }
 
-        static constexpr bool is_valid_kind_(enum kind k) {
+        static constexpr bool is_valid_kind_(kind k) {
 #ifndef MADM_LOGGER_DISABLED_KINDS
 #define MADM_LOGGER_DISABLED_KINDS {}
 #endif
-             enum kind disabled_kinds[] = MADM_LOGGER_DISABLED_KINDS;
+            kind disabled_kinds[] = MADM_LOGGER_DISABLED_KINDS;
 #undef MADM_LOGGER_DISABLED_KINDS
             return !kind_included_(k, disabled_kinds, sizeof(disabled_kinds) / sizeof(*disabled_kinds));
         }
 
-        static constexpr const char* kind_name(enum kind k) {
+        static constexpr const char* kind_name(kind k) {
             switch (k) {
-                case TEST: return "test";
+                case kind::INIT:   return "";
+                case kind::TEST:   return "test";
+                case kind::SCHED:  return "sched";
+                case kind::THREAD: return "thread";
+                case kind::OTHER:  return "other";
             }
+            return "error";
         }
 
-        template <enum kind k>
+        template <kind k>
         static void* logger_decoder_tl_(FILE* stream, int _rank0, int _rank1, void* buf0, void* buf1) {
             uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t);
             uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t);
@@ -95,22 +105,38 @@ namespace madi {
             mlog_clear_all(&lgr.md_);
         }
 
-        template <enum kind k>
-        static inline void begin_tl() {
+        template <kind k>
+        static inline void checkpoint() {
             if (is_valid_kind_(k)) {
                 logger& lgr = get_instance_();
                 uint64_t t = global_clock::get_time();
+                if (lgr.bp_) {
+                    auto fn = &logger_decoder_tl_<k>;
+                    MLOG_END(&lgr.md_, 0, lgr.bp_, fn, t);
+                }
                 lgr.bp_ = MLOG_BEGIN(&lgr.md_, 0, t);
             }
         }
 
-        template <enum kind k>
-        static inline void end_tl() {
+        template <kind k>
+        static inline begin_data begin_event() {
+            if (is_valid_kind_(k)) {
+                logger& lgr = get_instance_();
+                uint64_t t = global_clock::get_time();
+                begin_data bp = MLOG_BEGIN(&lgr.md_, 0, t);
+                return bp;
+            } else {
+                return nullptr;
+            }
+        }
+
+        template <kind k>
+        static inline void end_event(begin_data bp) {
             if (is_valid_kind_(k)) {
                 logger& lgr = get_instance_();
                 uint64_t t = global_clock::get_time();
                 auto fn = &logger_decoder_tl_<k>;
-                MLOG_END(&lgr.md_, 0, lgr.bp_, fn, t);
+                MLOG_END(&lgr.md_, 0, bp, fn, t);
             }
         }
 #else
@@ -118,10 +144,12 @@ namespace madi {
         static void flush() {}
         static void warmup() {}
         static void clear() {}
-        template <enum kind k>
-        static inline void begin_tl() {}
-        template <enum kind k>
-        static inline void end_tl() {}
+        template <kind k>
+        static inline void checkpoint() {}
+        template <kind k>
+        static inline begin_data begin_event() {}
+        template <kind k>
+        static inline void end_event(begin_data bp) {}
 #endif
 #undef MADM_LOGGER_ENABLE
     };

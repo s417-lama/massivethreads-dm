@@ -3,6 +3,7 @@
 #include "uni/taskq.h"
 #include "uth_options.h"
 #include "debug.h"
+#include "madm_logger.h"
 
 #include "madi-inl.h"
 #include "process-inl.h"

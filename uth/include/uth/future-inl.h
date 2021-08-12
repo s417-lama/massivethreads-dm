@@ -75,11 +75,15 @@ namespace uth {
     template <class T>
     inline T future<T>::get()
     {
+        madi::logger::checkpoint<madi::logger::kind::THREAD>();
+
         madi::worker& w = madi::current_worker();
 
         T value;
         while (!try_get(w, &value))
             w.do_scheduler_work();
+
+        madi::logger::checkpoint<madi::logger::kind::SCHED>();
 
         return value;
     }

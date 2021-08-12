@@ -77,7 +77,7 @@ namespace madi {
             return false;
 
         logger::init(comm::get_pid());
-        logger::begin_tl<logger::TEST>();
+        logger::checkpoint<logger::kind::INIT>();
 
         MADI_DPUTS2("communication layer initialized");
 
@@ -97,7 +97,7 @@ namespace madi {
 
         MADI_DPUTS2("communication layer finalized");
 
-        logger::end_tl<logger::TEST>();
+        logger::checkpoint<logger::kind::SCHED>();
         logger::flush();
 
         uth_options_finalize();
