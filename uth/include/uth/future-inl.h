@@ -135,7 +135,7 @@ namespace madi {
 
         while (!trylock(target)) {
 
-#if 1
+#if 0
             long rand_t_backoff = (long)((double)t_backoff * random_double());
 
             while (rdtsc() - t_start <= rand_t_backoff)
