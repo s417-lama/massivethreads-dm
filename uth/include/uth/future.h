@@ -67,6 +67,8 @@ namespace madi {
         dist_spinlock locks_;
         uint64_t **idxes_;
         T **data_;
+
+        logger::begin_data log_bd_;
     public:
         dist_pool(uth_comm& c, int size);
         ~dist_pool();

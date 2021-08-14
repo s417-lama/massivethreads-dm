@@ -123,6 +123,8 @@ namespace madi {
 
     inline void dist_spinlock::lock(uth_pid_t target)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::DIST_SPINLOCK_LOCK>();
+
         const long backoff_base = 4 * 1e6;
         const long backoff_max  = 32 * 1e6;
 
@@ -155,16 +157,22 @@ namespace madi {
 
         long t1 = rdtsc();
         g_prof->t_dist_lock += t1 - t0;
+
+        logger::end_event<logger::kind::DIST_SPINLOCK_LOCK>(bd);
     }
 
     inline void dist_spinlock::unlock(uth_pid_t target)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::DIST_SPINLOCK_UNLOCK>();
+
         MADI_DPUTSP2("DIST SPIN UNLOCK");
 
         uth_comm::lock_t *lock = locks_[target];
         c_.unlock(lock, target);
 
         MADI_DPUTSP2("DIST SPIN UNLOCK DONE");
+
+        logger::end_event<logger::kind::DIST_SPINLOCK_UNLOCK>(bd);
     }
 
     template <class T>
@@ -212,6 +220,8 @@ namespace madi {
     template <class T>
     inline bool dist_pool<T>::push_remote(T& v, uth_pid_t target)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::DIST_POOL_PUSH>();
+
         locks_.lock(target);
         
         MADI_DPUTSP2("PUSH REMOTE IDX INCR");
@@ -235,12 +245,17 @@ namespace madi {
         }
 
         locks_.unlock(target);
+
+        logger::end_event<logger::kind::DIST_POOL_PUSH>(bd);
+
         return success;
     }
 
     template <class T>
     inline void dist_pool<T>::begin_pop_local()
     {
+        log_bd_ = logger::begin_event<logger::kind::DIST_POOL_POP>();
+
         uth_pid_t target = c_.get_pid();
         locks_.lock(target);
     }
@@ -250,6 +265,8 @@ namespace madi {
     {
         uth_pid_t target = c_.get_pid();
         locks_.unlock(target);
+
+        logger::end_event<logger::kind::DIST_POOL_POP>(log_bd_);
     }
 
     template <class T>

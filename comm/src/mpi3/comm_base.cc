@@ -2,6 +2,7 @@
 #include "mpi3/comm_memory.h"
 #include "ampeer.h"
 #include "options.h"
+#include "madm_logger.h"
 
 #include <cstring>
 #include <mpi.h>
@@ -158,6 +159,8 @@ namespace comm {
     void comm_base::raw_put__(int memid, void *dst, void *src, size_t size,
                               int target, int flags, int me)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_PUT>();
+
         if (target == me) {
             MADI_DPUTS3("memcpy(%p, %p, %zu)", dst, src, size);
             memcpy(dst, src, size);
@@ -175,11 +178,15 @@ namespace comm {
 
         // issue
         MPI_Put(src, size, MPI_BYTE, target, target_disp, size, MPI_BYTE, win);
+
+        logger::end_event<logger::kind::COMM_PUT>(bd);
     }
 
     void comm_base::raw_get(int memid, void *dst, void *src, size_t size,
                             int target, int flags, int me)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_GET>();
+
         if (target == me) {
             MADI_DPUTS3("memcpy(%p, %p, %zu)", dst, src, size);
             memcpy(dst, src, size);
@@ -197,6 +204,8 @@ namespace comm {
 
         // issue
         MPI_Get(dst, size, MPI_BYTE, target, target_disp, size, MPI_BYTE, win);
+
+        logger::end_event<logger::kind::COMM_GET>(bd);
     }
 
     int comm_base::poll(int *tag_out, int *pid_out, process_config& config)
@@ -219,9 +228,13 @@ namespace comm {
 
     void comm_base::fence()
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_FENCE>();
+
         for (auto& win : cmr_->windows())
             if (win != MPI_WIN_NULL)
                 MPI_Win_flush_all(win);
+
+        logger::end_event<logger::kind::COMM_FENCE>(bd);
     }
 
     void comm_base::sync()
@@ -247,6 +260,8 @@ namespace comm {
     T comm_base::fetch_and_add(T *dst, T value, int target,
                                process_config& config)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_FETCH_AND_ADD>();
+
         // calculate local/remote buffer address
         MPI_Win win;
         size_t target_disp;
@@ -259,6 +274,8 @@ namespace comm {
         MPI_Fetch_and_op(&value, &result, type, target, target_disp,
                          MPI_SUM, win);
         MPI_Win_flush(target, win);
+
+        logger::end_event<logger::kind::COMM_FETCH_AND_ADD>(bd);
 
         return result;
     }
@@ -278,6 +295,8 @@ namespace comm {
     bool comm_base::trylock(lock_t* lp, int target,
                              process_config& config)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_TRYLOCK>();
+
         MPI_Win win;
         size_t target_disp;
         cmr_->translate(-1, lp, sizeof(lock_t), target, &target_disp, &win);
@@ -287,21 +306,29 @@ namespace comm {
         MPI_Fetch_and_op(&inc, &result, MPI_LOCK_T, target, target_disp, MPI_SUM, win);
         MPI_Win_flush(target, win);
 
+        logger::end_event<logger::kind::COMM_TRYLOCK>(bd);
+
         return result == 0;
     }
 
     void comm_base::lock(lock_t* lp, int target,
                          process_config& config)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_LOCK>();
+
         while (!trylock(lp, target, config)) {
             int tag, pid;
             poll(&tag, &pid, config);
         };
+
+        logger::end_event<logger::kind::COMM_LOCK>(bd);
     }
 
     void comm_base::unlock(lock_t* lp, int target,
                            process_config& config)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_UNLOCK>();
+
         MPI_Win win;
         size_t target_disp;
         cmr_->translate(-1, lp, sizeof(lock_t), target, &target_disp, &win);
@@ -310,6 +337,8 @@ namespace comm {
         lock_t result;
         MPI_Fetch_and_op(&zero, &result, MPI_LOCK_T, target, target_disp, MPI_REPLACE, win);
         MPI_Win_flush(target, win);
+
+        logger::end_event<logger::kind::COMM_UNLOCK>(bd);
     }
 }
 }

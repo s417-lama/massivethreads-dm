@@ -76,9 +76,6 @@ namespace madi {
         if (!result)
             return false;
 
-        logger::init(comm::get_pid());
-        logger::checkpoint<logger::kind::INIT>();
-
         MADI_DPUTS2("communication layer initialized");
 
         // FIXME: return do_initialize(*this, argc, argv);

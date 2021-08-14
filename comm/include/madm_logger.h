@@ -19,6 +19,21 @@ namespace madi {
             TEST,
             SCHED,
             THREAD,
+
+            DIST_POOL_PUSH,
+            DIST_POOL_POP,
+
+            DIST_SPINLOCK_LOCK,
+            DIST_SPINLOCK_UNLOCK,
+
+            COMM_PUT,
+            COMM_GET,
+            COMM_FENCE,
+            COMM_FETCH_AND_ADD,
+            COMM_TRYLOCK,
+            COMM_LOCK,
+            COMM_UNLOCK,
+
             OTHER
         };
 
@@ -49,18 +64,51 @@ namespace madi {
 #endif
             kind disabled_kinds[] = MADM_LOGGER_DISABLED_KINDS;
 #undef MADM_LOGGER_DISABLED_KINDS
+            /* kind disabled_kinds[] = { */
+            /*     /1* kind::TEST, *1/ */
+            /*     /1* kind::SCHED, *1/ */
+            /*     /1* kind::THREAD, *1/ */
+
+            /*     /1* kind::DIST_POOL_PUSH, *1/ */
+            /*     /1* kind::DIST_POOL_POP, *1/ */
+
+            /*     /1* kind::DIST_SPINLOCK_LOCK, *1/ */
+            /*     /1* kind::DIST_SPINLOCK_UNLOCK, *1/ */
+
+            /*     /1* kind::COMM_PUT, *1/ */
+            /*     /1* kind::COMM_GET, *1/ */
+            /*     /1* kind::COMM_FENCE, *1/ */
+            /*     /1* kind::COMM_FETCH_AND_ADD, *1/ */
+            /*     /1* kind::COMM_TRYLOCK, *1/ */
+            /*     /1* kind::COMM_LOCK, *1/ */
+            /*     /1* kind::COMM_UNLOCK, *1/ */
+            /* }; */
             return !kind_included_(k, disabled_kinds, sizeof(disabled_kinds) / sizeof(*disabled_kinds));
         }
 
         static constexpr const char* kind_name(kind k) {
             switch (k) {
-                case kind::INIT:   return "";
-                case kind::TEST:   return "test";
-                case kind::SCHED:  return "sched";
-                case kind::THREAD: return "thread";
-                case kind::OTHER:  return "other";
+                case kind::INIT:                 return "";
+                case kind::TEST:                 return "test";
+                case kind::SCHED:                return "sched";
+                case kind::THREAD:               return "thread";
+
+                case kind::DIST_POOL_PUSH:       return "dist_pool_push";
+                case kind::DIST_POOL_POP:        return "dist_pool_pop";
+
+                case kind::DIST_SPINLOCK_LOCK:   return "dist_spinlock_lock";
+                case kind::DIST_SPINLOCK_UNLOCK: return "dist_spinlock_unlock";
+
+                case kind::COMM_PUT:             return "comm_put";
+                case kind::COMM_GET:             return "comm_get";
+                case kind::COMM_FENCE:           return "comm_fence";
+                case kind::COMM_FETCH_AND_ADD:   return "comm_fetch_and_add";
+                case kind::COMM_TRYLOCK:         return "comm_trylock";
+                case kind::COMM_LOCK:            return "comm_lock";
+                case kind::COMM_UNLOCK:          return "comm_unlock";
+
+                default:                         return "other";
             }
-            return "error";
         }
 
         template <kind k>

@@ -34,6 +34,9 @@ namespace comm {
         g.debug_out = stderr;
         MPI_Comm_rank(MPI_COMM_WORLD, &g.debug_pid);
 
+        logger::init(g.debug_pid);
+        logger::checkpoint<logger::kind::INIT>();
+
         g.initialized = true;
 
         g.comm->barrier();
