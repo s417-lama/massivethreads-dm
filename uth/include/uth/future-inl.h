@@ -361,6 +361,8 @@ namespace madi {
     template <class T>
     inline madm::uth::future<T> future_pool::get()
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::FUTURE_POOL_GET>();
+
         uth_pid_t me = madi::proc().com().get_pid();
 
         size_t entry_size = sizeof(entry<T>);
@@ -380,6 +382,8 @@ namespace madi {
 
             reset<T>(id);
 
+            logger::end_event<logger::kind::FUTURE_POOL_GET>(bd);
+
             return madm::uth::future<T>(id, me);
         }
 
@@ -387,6 +391,8 @@ namespace madi {
         if (ptr_ + real_size < buf_size_) {
             int id = ptr_;
             ptr_ += real_size;
+
+            logger::end_event<logger::kind::FUTURE_POOL_GET>(bd);
 
             return madm::uth::future<T>(id, me);
         }
@@ -397,6 +403,8 @@ namespace madi {
     template <class T>
     inline void future_pool::fill(madm::uth::future<T> f, T& value)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::FUTURE_POOL_FILL>();
+
         uth_comm& c = madi::proc().com();
         uth_pid_t me = c.get_pid();
         int fid = f.id_;
@@ -413,11 +421,15 @@ namespace madi {
             c.put_buffered(&e->value, &value, sizeof(value), pid);
             c.put_value(&e->done, 1, pid);
         }
+
+        logger::end_event<logger::kind::FUTURE_POOL_FILL>(bd);
     }
 
     template <class T>
     inline bool future_pool::synchronize(madm::uth::future<T> f, T *value)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::FUTURE_POOL_SYNC>();
+
         uth_comm& c = madi::proc().com();
         uth_pid_t me = c.get_pid();
         int fid = f.id_;
@@ -464,6 +476,8 @@ namespace madi {
             comm::threadsafe::rbarrier();
             *value = e->value;
         }
+
+        logger::end_event<logger::kind::FUTURE_POOL_SYNC>(bd);
 
         return e->done;
     }

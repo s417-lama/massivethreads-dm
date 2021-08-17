@@ -11,6 +11,8 @@ namespace madi {
 
     inline void global_taskque::push(uth_comm& c, const taskq_entry& entry)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::TASKQ_PUSH>();
+
         int t = top_;
 
         comm::threadsafe::rbarrier();
@@ -50,14 +52,20 @@ namespace madi {
         top_ = t + 1;
 
         MADI_DPUTS3("top = %d", top_);
+
+        logger::end_event<logger::kind::TASKQ_PUSH>(bd);
     }
 
     inline taskq_entry * global_taskque::pop(uth_comm& c)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::TASKQ_POP>();
+
 // pop operation must block until a thief is acquiring lock_.
 //         // quick check
 //         if (top_ <= base_)
 //             return NULL;
+        taskq_entry *result;
+
         int t = top_ - 1;
         top_ = t;
 
@@ -66,25 +74,26 @@ namespace madi {
         int b = base_;
 
         if (b + 1 < t) {
-            return &entries_[t];
-        }
-
-        pid_t me = c.get_pid();
-        c.lock(&lock_, me);
-
-        b = base_;
-
-        taskq_entry *result;
-        if (b <= t) {
             result = &entries_[t];
         } else {
-            top_ = n_entries_ / 2;
-            base_ = top_;
+            pid_t me = c.get_pid();
+            c.lock(&lock_, me);
 
-            result = NULL;
+            b = base_;
+
+            if (b <= t) {
+                result = &entries_[t];
+            } else {
+                top_ = n_entries_ / 2;
+                base_ = top_;
+
+                result = NULL;
+            }
+
+            c.unlock(&lock_, me);
         }
 
-        c.unlock(&lock_, me);
+        logger::end_event<logger::kind::TASKQ_POP>(bd);
 
         return result;
     }
@@ -139,6 +148,8 @@ namespace madi {
                                       taskq_entry *entry,
                                       global_taskque *taskq_buf)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::TASKQ_STEAL>();
+
         // assume that `this' pointer is remote.
         // assume that this function is protected by
         // steal_trylock and steal_unlock.
@@ -168,6 +179,8 @@ namespace madi {
         } else {
             result = false;
         }
+
+        logger::end_event<logger::kind::TASKQ_STEAL>(bd);
 
         return result;
     }

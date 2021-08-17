@@ -340,14 +340,22 @@ namespace madi {
         if (!is_main_task_ && main_ctx_ != NULL) {
             // this task is not the main task,
             // and the main task is not saved (packed).
+
+            /* bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_LWT>(); */
+
             is_main_task_ = true;
 
             MADI_DPUTS1("a main task is resuming");
 
             MADI_CONTEXT_PRINT(2, main_ctx_);
+
+            /* logger::end_event<logger::kind::WORKER_RESUME_LWT>(bd_resume_); */
+
             MADI_RESUME_CONTEXT(main_ctx_);
         } else if (!waitq_.empty()) {
             // here, the main task is in the waiting queue
+
+            bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_HWT>();
 
             saved_context *sctx = waitq_.front();
             waitq_.pop_front();

@@ -135,7 +135,10 @@ void worker::finalize(uth_comm& c)
 
 void resume_context(saved_context *sctx, context *ctx)
 {
-    madi::current_worker().waitq().push_back(sctx);
+    worker& w = madi::current_worker();
+    w.waitq().push_back(sctx);
+
+    logger::end_event<logger::kind::WORKER_RESUME_LWT>(w.get_logger_begin_data());
 
     MADI_RESUME_CONTEXT(ctx);
 }
@@ -168,6 +171,10 @@ void worker::do_scheduler_work()
 
     if (entry != NULL) {
         // switch to the parent task
+
+        // FIXME: this part is not executed
+        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_LWT>();
+
         MADI_ASSERT(!is_main_task_);
         MADI_DPUTSB2("resuming the parent task");
         suspend(resume_context, entry->ctx);
@@ -175,6 +182,10 @@ void worker::do_scheduler_work()
         // if this task is not the main task,
         // and the main task is not suspended (the frames are on the stack),
         // switch to the main task
+
+        // FIXME: this part is not executed
+        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_LWT>();
+
         is_main_task_ = true;
         MADI_DPUTSB2("resuming the main task");
         suspend(resume_context, main_ctx_);
@@ -187,6 +198,8 @@ void worker::do_scheduler_work()
         if (success) {
             // do nothing (stolen function is resumed at the steal() function)
         } else if (!waitq_.empty()) {
+            bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_HWT>();
+
             main_ctx_ = NULL;
 
             // switch to a waiting task
@@ -248,6 +261,9 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
                  frame_base, frame_base + frame_size, frame_size);
 
+    logger::end_event<logger::kind::WORKER_RESUME_HWT>(
+            madi::current_worker().get_logger_begin_data());
+
     madi_resume_context(ctx);
 }
 
@@ -286,6 +302,9 @@ void madi_worker_do_resume_remote_context_1(uth_comm& c,
 
     MADI_DPUTSR1("resuming  [%p, %p) (size = %zu) (stolen)",
                  frame_base, frame_base + frame_size, frame_size);
+
+    logger::end_event<logger::kind::WORKER_RESUME_REMOTE>(
+            madi::current_worker().get_logger_begin_data());
 
     // resume the context of the stolen thread
     madi_resume_context(ctx);
@@ -542,6 +561,8 @@ bool worker::steal_by_rdmas()
     }
 
     if (success) {
+        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_REMOTE>();
+
         main_ctx_ = NULL;
 
         // switch to the stolen task

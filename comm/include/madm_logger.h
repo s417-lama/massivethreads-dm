@@ -20,11 +20,23 @@ namespace madi {
             SCHED,
             THREAD,
 
+            TASKQ_PUSH,
+            TASKQ_POP,
+            TASKQ_STEAL,
+
+            FUTURE_POOL_SYNC,
+            FUTURE_POOL_FILL,
+            FUTURE_POOL_GET,
+
             DIST_POOL_PUSH,
             DIST_POOL_POP,
 
             DIST_SPINLOCK_LOCK,
             DIST_SPINLOCK_UNLOCK,
+
+            WORKER_RESUME_LWT,
+            WORKER_RESUME_HWT,
+            WORKER_RESUME_REMOTE,
 
             COMM_PUT,
             COMM_GET,
@@ -59,30 +71,45 @@ namespace madi {
         }
 
         static constexpr bool is_valid_kind_(kind k) {
+#if 0
+            kind disabled_kinds[] = {
+                /* kind::TEST, */
+                /* kind::SCHED, */
+                /* kind::THREAD, */
+
+                /* kind::TASKQ_PUSH, */
+                /* kind::TASKQ_POP, */
+                /* kind::TASKQ_STEAL, */
+
+                /* kind::FUTURE_POOL_SYNC, */
+                /* kind::FUTURE_POOL_FILL, */
+                /* kind::FUTURE_POOL_GET, */
+
+                /* kind::DIST_POOL_PUSH, */
+                /* kind::DIST_POOL_POP, */
+
+                /* kind::DIST_SPINLOCK_LOCK, */
+                /* kind::DIST_SPINLOCK_UNLOCK, */
+
+                /* kind::WORKER_RESUME_LWT, */
+                /* kind::WORKER_RESUME_HWT, */
+                /* kind::WORKER_RESUME_REMOTE, */
+
+                /* kind::COMM_PUT, */
+                /* kind::COMM_GET, */
+                /* kind::COMM_FENCE, */
+                /* kind::COMM_FETCH_AND_ADD, */
+                /* kind::COMM_TRYLOCK, */
+                /* kind::COMM_LOCK, */
+                /* kind::COMM_UNLOCK, */
+            };
+#else
 #ifndef MADM_LOGGER_DISABLED_KINDS
 #define MADM_LOGGER_DISABLED_KINDS {}
 #endif
             kind disabled_kinds[] = MADM_LOGGER_DISABLED_KINDS;
 #undef MADM_LOGGER_DISABLED_KINDS
-            /* kind disabled_kinds[] = { */
-            /*     /1* kind::TEST, *1/ */
-            /*     /1* kind::SCHED, *1/ */
-            /*     /1* kind::THREAD, *1/ */
-
-            /*     /1* kind::DIST_POOL_PUSH, *1/ */
-            /*     /1* kind::DIST_POOL_POP, *1/ */
-
-            /*     /1* kind::DIST_SPINLOCK_LOCK, *1/ */
-            /*     /1* kind::DIST_SPINLOCK_UNLOCK, *1/ */
-
-            /*     /1* kind::COMM_PUT, *1/ */
-            /*     /1* kind::COMM_GET, *1/ */
-            /*     /1* kind::COMM_FENCE, *1/ */
-            /*     /1* kind::COMM_FETCH_AND_ADD, *1/ */
-            /*     /1* kind::COMM_TRYLOCK, *1/ */
-            /*     /1* kind::COMM_LOCK, *1/ */
-            /*     /1* kind::COMM_UNLOCK, *1/ */
-            /* }; */
+#endif
             return !kind_included_(k, disabled_kinds, sizeof(disabled_kinds) / sizeof(*disabled_kinds));
         }
 
@@ -93,11 +120,23 @@ namespace madi {
                 case kind::SCHED:                return "sched";
                 case kind::THREAD:               return "thread";
 
+                case kind::TASKQ_PUSH:           return "taskq_push";
+                case kind::TASKQ_POP:            return "taskq_pop";
+                case kind::TASKQ_STEAL:          return "taskq_steal";
+
+                case kind::FUTURE_POOL_SYNC:     return "future_pool_sync";
+                case kind::FUTURE_POOL_FILL:     return "future_pool_fill";
+                case kind::FUTURE_POOL_GET:      return "future_pool_get";
+
                 case kind::DIST_POOL_PUSH:       return "dist_pool_push";
                 case kind::DIST_POOL_POP:        return "dist_pool_pop";
 
                 case kind::DIST_SPINLOCK_LOCK:   return "dist_spinlock_lock";
                 case kind::DIST_SPINLOCK_UNLOCK: return "dist_spinlock_unlock";
+
+                case kind::WORKER_RESUME_LWT:    return "worker_resume_lwt";
+                case kind::WORKER_RESUME_HWT:    return "worker_resume_hwt";
+                case kind::WORKER_RESUME_REMOTE: return "worker_resume_remote";
 
                 case kind::COMM_PUT:             return "comm_put";
                 case kind::COMM_GET:             return "comm_get";

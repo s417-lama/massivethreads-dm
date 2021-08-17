@@ -80,6 +80,8 @@ namespace madi {
         
         bool done_;
 
+        logger::begin_data bd_resume_;
+
     public:
         worker();
         ~worker();
@@ -126,6 +128,8 @@ namespace madi {
 
         template <class T> T * get_worker_local()
         { return reinterpret_cast<T *>(wls_); }
+
+        logger::begin_data get_logger_begin_data() const { return bd_resume_; }
 
     private:
         void go();
