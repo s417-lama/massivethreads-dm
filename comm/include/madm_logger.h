@@ -2,6 +2,7 @@
 #define MADM_LOGGER_H
 
 #include <cstdio>
+#include <sstream>
 
 #include "madm_global_clock.h"
 
@@ -160,6 +161,19 @@ namespace madi {
             return buf1;
         }
 
+        template <kind k, typename MISC>
+        static void* logger_decoder_tl_w_misc_(FILE* stream, int _rank0, int _rank1, void* buf0, void* buf1) {
+            uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t);
+            uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t);
+            MISC     m  = MLOG_READ_ARG(&buf1, MISC);
+
+            logger& lgr = get_instance_();
+            std::stringstream ss;
+            ss << m;
+            fprintf(stream, "%d,%lu,%d,%lu,%s,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name(k), ss.str().c_str());
+            return buf1;
+        }
+
     public:
 #ifndef MADM_LOGGER_ENABLE
 #define MADM_LOGGER_ENABLE 0
@@ -226,6 +240,16 @@ namespace madi {
                 MLOG_END(&lgr.md_, 0, bp, fn, t);
             }
         }
+
+        template <kind k, typename MISC>
+        static inline void end_event(begin_data bp, MISC m) {
+            if (is_valid_kind_(k)) {
+                logger& lgr = get_instance_();
+                uint64_t t = global_clock::get_time();
+                auto fn = &logger_decoder_tl_w_misc_<k, MISC>;
+                MLOG_END(&lgr.md_, 0, bp, fn, t, m);
+            }
+        }
 #else
         static void init(int rank, size_t size = 0) {}
         static void flush() {}
@@ -237,6 +261,8 @@ namespace madi {
         static inline begin_data begin_event() {}
         template <kind k>
         static inline void end_event(begin_data bp) {}
+        template <kind k, typename MISC>
+        static inline void end_event(begin_data bp, MISC m) {}
 #endif
 #undef MADM_LOGGER_ENABLE
     };

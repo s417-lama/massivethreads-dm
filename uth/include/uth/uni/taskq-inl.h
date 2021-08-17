@@ -180,7 +180,7 @@ namespace madi {
             result = false;
         }
 
-        logger::end_event<logger::kind::TASKQ_STEAL>(bd);
+        logger::end_event<logger::kind::TASKQ_STEAL>(bd, target);
 
         return result;
     }
