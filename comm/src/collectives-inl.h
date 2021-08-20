@@ -106,14 +106,22 @@ namespace comm {
     }
 
     template <class T> inline MPI_Datatype mpi_type();
-    template <> inline MPI_Datatype mpi_type<int>()
-    { return MPI_INT; }
-    template <> inline MPI_Datatype mpi_type<unsigned int>()
-    { return MPI_UNSIGNED; }
-    template <> inline MPI_Datatype mpi_type<long>()
-    { return MPI_LONG; }
-    template <> inline MPI_Datatype mpi_type<unsigned long>()
-    { return MPI_UNSIGNED_LONG; }
+    template <> inline MPI_Datatype mpi_type<int          >() { return MPI_INT;           }
+    template <> inline MPI_Datatype mpi_type<unsigned int >() { return MPI_UNSIGNED;      }
+    template <> inline MPI_Datatype mpi_type<long         >() { return MPI_LONG;          }
+    template <> inline MPI_Datatype mpi_type<unsigned long>() { return MPI_UNSIGNED_LONG; }
+
+    template <class Comm>
+    template <class T>
+    void collectives<Comm>::broadcast(T* buf, size_t size, pid_t root)
+    {
+#if MADI_COMM_LAYER != MADI_COMM_LAYER_SEQ
+        MPI_Comm comm = config_.comm();
+        MPI_Datatype mpitype = mpi_type<T>();
+
+        MPI_Bcast(const_cast<T*>(buf), size, mpitype, root, comm);
+#endif
+    }
 
     template <class Comm>
     template <class T>
@@ -121,7 +129,7 @@ namespace comm {
                                    size_t size, pid_t root, reduce_op op)
     {
 #if MADI_COMM_LAYER == MADI_COMM_LAYER_SEQ
-        dst[0] = src[0];
+        for (size_t i = 0; i < size_t; i++) dst[i] = src[i];
 #else
         // FIXME: collective operation has to call poll() function
         MPI_Comm comm = config_.comm();

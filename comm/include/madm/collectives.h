@@ -30,6 +30,8 @@ namespace comm {
         void barrier();
 
         template <class T>
+        void broadcast(T* buf, size_t size, pid_t root);
+        template <class T>
         void reduce(T dst[], const T src[], size_t size,
                          pid_t root, reduce_op op);
     };

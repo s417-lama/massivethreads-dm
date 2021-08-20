@@ -155,12 +155,17 @@ namespace comm {
     }
 
     template <class T>
-    void broadcast(T *dst, const T &src, pid_t root)
+    void broadcast(T* buf, size_t size, pid_t root)
     {
         MADI_ASSERT(0 <= root && root < get_n_procs());
 
-        MADI_UNDEFINED;
+        g.comm->broadcast(buf, size, root);
     }
+
+    template void broadcast(int*, size_t, pid_t);
+    template void broadcast(unsigned int*, size_t, pid_t);
+    template void broadcast(long*, size_t, pid_t);
+    template void broadcast(unsigned long*, size_t, pid_t);
 
     template <class T>
     void reduce(T *dst, const T src[], size_t size, pid_t root,

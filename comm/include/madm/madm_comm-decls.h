@@ -67,7 +67,7 @@ namespace comm {
     bool barrier_try();
 
     template <class T>
-    void broadcast(T *dst, const T &src, pid_t root);
+    void broadcast(T* buf, size_t size, pid_t root);
 
     enum reduce_op {
         reduce_op_sum,

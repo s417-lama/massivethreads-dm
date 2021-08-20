@@ -83,7 +83,7 @@ namespace madi {
         bool barrier_try();
 
         template <class T>
-        void broadcast(T& dst, const T& src, size_t root);
+        void broadcast(T* buf, size_t, uth_pid_t root);
 
         void poll();
 
