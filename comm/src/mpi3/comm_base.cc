@@ -179,7 +179,7 @@ namespace comm {
         // issue
         MPI_Put(src, size, MPI_BYTE, target, target_disp, size, MPI_BYTE, win);
 
-        logger::end_event<logger::kind::COMM_PUT>(bd);
+        logger::end_event<logger::kind::COMM_PUT>(bd, target);
     }
 
     void comm_base::raw_get(int memid, void *dst, void *src, size_t size,
@@ -205,11 +205,13 @@ namespace comm {
         // issue
         MPI_Get(dst, size, MPI_BYTE, target, target_disp, size, MPI_BYTE, win);
 
-        logger::end_event<logger::kind::COMM_GET>(bd);
+        logger::end_event<logger::kind::COMM_GET>(bd, target);
     }
 
     int comm_base::poll(int *tag_out, int *pid_out, process_config& config)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_POLL>();
+
         // `MPI_Iprobe` is used to make progress on RMA operations, especially for MPICH.
         // Otherwise `MPI_Win_flush_all` gets stuck at the origin process because
         // the target process does not make progress on any RMA operations.
@@ -223,6 +225,9 @@ namespace comm {
         MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
 
         sync();
+
+        logger::end_event<logger::kind::COMM_POLL>(bd);
+
         return 0;
     }
 
@@ -275,7 +280,7 @@ namespace comm {
                          MPI_SUM, win);
         MPI_Win_flush(target, win);
 
-        logger::end_event<logger::kind::COMM_FETCH_AND_ADD>(bd);
+        logger::end_event<logger::kind::COMM_FETCH_AND_ADD>(bd, target);
 
         return result;
     }
@@ -306,7 +311,7 @@ namespace comm {
         MPI_Fetch_and_op(&inc, &result, MPI_LOCK_T, target, target_disp, MPI_SUM, win);
         MPI_Win_flush(target, win);
 
-        logger::end_event<logger::kind::COMM_TRYLOCK>(bd);
+        logger::end_event<logger::kind::COMM_TRYLOCK>(bd, target);
 
         return result == 0;
     }
@@ -321,7 +326,7 @@ namespace comm {
             poll(&tag, &pid, config);
         };
 
-        logger::end_event<logger::kind::COMM_LOCK>(bd);
+        logger::end_event<logger::kind::COMM_LOCK>(bd, target);
     }
 
     void comm_base::unlock(lock_t* lp, int target,
@@ -338,7 +343,7 @@ namespace comm {
         MPI_Fetch_and_op(&zero, &result, MPI_LOCK_T, target, target_disp, MPI_REPLACE, win);
         MPI_Win_flush(target, win);
 
-        logger::end_event<logger::kind::COMM_UNLOCK>(bd);
+        logger::end_event<logger::kind::COMM_UNLOCK>(bd, target);
     }
 }
 }

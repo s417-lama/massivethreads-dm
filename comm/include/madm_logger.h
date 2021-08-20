@@ -24,6 +24,7 @@ namespace madi {
             TASKQ_PUSH,
             TASKQ_POP,
             TASKQ_STEAL,
+            TASKQ_EMPTY,
 
             FUTURE_POOL_SYNC,
             FUTURE_POOL_FILL,
@@ -38,6 +39,7 @@ namespace madi {
             WORKER_RESUME_LWT,
             WORKER_RESUME_HWT,
             WORKER_RESUME_REMOTE,
+            WORKER_TRY_STEAL,
 
             COMM_PUT,
             COMM_GET,
@@ -46,6 +48,7 @@ namespace madi {
             COMM_TRYLOCK,
             COMM_LOCK,
             COMM_UNLOCK,
+            COMM_POLL,
 
             OTHER
         };
@@ -81,6 +84,7 @@ namespace madi {
                 /* kind::TASKQ_PUSH, */
                 /* kind::TASKQ_POP, */
                 /* kind::TASKQ_STEAL, */
+                /* kind::TASKQ_EMPTY, */
 
                 /* kind::FUTURE_POOL_SYNC, */
                 /* kind::FUTURE_POOL_FILL, */
@@ -95,6 +99,7 @@ namespace madi {
                 /* kind::WORKER_RESUME_LWT, */
                 /* kind::WORKER_RESUME_HWT, */
                 /* kind::WORKER_RESUME_REMOTE, */
+                /* kind::WORKER_TRY_STEAL, */
 
                 /* kind::COMM_PUT, */
                 /* kind::COMM_GET, */
@@ -103,6 +108,7 @@ namespace madi {
                 /* kind::COMM_TRYLOCK, */
                 /* kind::COMM_LOCK, */
                 /* kind::COMM_UNLOCK, */
+                /* kind::COMM_POLL, */
             };
 #else
 #ifndef MADM_LOGGER_DISABLED_KINDS
@@ -124,6 +130,7 @@ namespace madi {
                 case kind::TASKQ_PUSH:           return "taskq_push";
                 case kind::TASKQ_POP:            return "taskq_pop";
                 case kind::TASKQ_STEAL:          return "taskq_steal";
+                case kind::TASKQ_EMPTY:          return "taskq_empty";
 
                 case kind::FUTURE_POOL_SYNC:     return "future_pool_sync";
                 case kind::FUTURE_POOL_FILL:     return "future_pool_fill";
@@ -138,6 +145,7 @@ namespace madi {
                 case kind::WORKER_RESUME_LWT:    return "worker_resume_lwt";
                 case kind::WORKER_RESUME_HWT:    return "worker_resume_hwt";
                 case kind::WORKER_RESUME_REMOTE: return "worker_resume_remote";
+                case kind::WORKER_TRY_STEAL:     return "worker_try_steal";
 
                 case kind::COMM_PUT:             return "comm_put";
                 case kind::COMM_GET:             return "comm_get";
@@ -146,6 +154,7 @@ namespace madi {
                 case kind::COMM_TRYLOCK:         return "comm_trylock";
                 case kind::COMM_LOCK:            return "comm_lock";
                 case kind::COMM_UNLOCK:          return "comm_unlock";
+                case kind::COMM_POLL:            return "comm_poll";
 
                 default:                         return "other";
             }

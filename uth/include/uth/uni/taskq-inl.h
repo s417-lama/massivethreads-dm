@@ -126,8 +126,12 @@ namespace madi {
     inline bool global_taskque::empty(uth_comm& c, uth_pid_t target,
                                       global_taskque *taskq_buf)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::TASKQ_EMPTY>();
+
         global_taskque& self = *taskq_buf; // RMA buffer
         c.get(&self, this, sizeof(self), target);
+
+        logger::end_event<logger::kind::TASKQ_EMPTY>(bd, target);
 
         return self.base_ >= self.top_;
     }

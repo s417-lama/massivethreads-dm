@@ -158,7 +158,7 @@ namespace madi {
         long t1 = rdtsc();
         g_prof->t_dist_lock += t1 - t0;
 
-        logger::end_event<logger::kind::DIST_SPINLOCK_LOCK>(bd);
+        logger::end_event<logger::kind::DIST_SPINLOCK_LOCK>(bd, target);
     }
 
     inline void dist_spinlock::unlock(uth_pid_t target)
@@ -172,7 +172,7 @@ namespace madi {
 
         MADI_DPUTSP2("DIST SPIN UNLOCK DONE");
 
-        logger::end_event<logger::kind::DIST_SPINLOCK_UNLOCK>(bd);
+        logger::end_event<logger::kind::DIST_SPINLOCK_UNLOCK>(bd, target);
     }
 
     template <class T>
@@ -240,13 +240,14 @@ namespace madi {
 
             success = true;
         } else {
+            // pool becomes full
             c_.put_value(idx_ptr, idx, target);
             success = false;
         }
 
         locks_.unlock(target);
 
-        logger::end_event<logger::kind::DIST_POOL_PUSH>(bd);
+        logger::end_event<logger::kind::DIST_POOL_PUSH>(bd, target);
 
         return success;
     }
@@ -375,29 +376,26 @@ namespace madi {
             move_back_returned_ids();
         }
 
-        // pop a future id from the local pool
+        int id;
         if (!id_pools_[idx].empty()) {
-            int id = id_pools_[idx].back();
+            // pop a future id from the local pool
+            id = id_pools_[idx].back();
             id_pools_[idx].pop_back();
 
             reset<T>(id);
-
-            logger::end_event<logger::kind::FUTURE_POOL_GET>(bd);
-
-            return madm::uth::future<T>(id, me);
-        }
-
-        // if pool is empty, allocate a future id from ptr_
-        if (ptr_ + real_size < buf_size_) {
-            int id = ptr_;
+        } else if (ptr_ + real_size < buf_size_) {
+            // if pool is empty, allocate a future id from ptr_
+            id = ptr_;
             ptr_ += real_size;
-
-            logger::end_event<logger::kind::FUTURE_POOL_GET>(bd);
-
-            return madm::uth::future<T>(id, me);
+        } else {
+            madi::die("future pool overflow");
         }
 
-        madi::die("future pool overflow");
+        madm::uth::future<T> ret = madm::uth::future<T>(id, me);
+
+        logger::end_event<logger::kind::FUTURE_POOL_GET>(bd, id);
+
+        return ret;
     }
 
     template <class T>
@@ -422,7 +420,7 @@ namespace madi {
             c.put_value(&e->done, 1, pid);
         }
 
-        logger::end_event<logger::kind::FUTURE_POOL_FILL>(bd);
+        logger::end_event<logger::kind::FUTURE_POOL_FILL>(bd, pid);
     }
 
     template <class T>

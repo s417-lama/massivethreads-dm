@@ -304,7 +304,7 @@ void madi_worker_do_resume_remote_context_1(uth_comm& c,
                  frame_base, frame_base + frame_size, frame_size);
 
     logger::end_event<logger::kind::WORKER_RESUME_REMOTE>(
-            madi::current_worker().get_logger_begin_data());
+            madi::current_worker().get_logger_begin_data(), victim);
 
     // resume the context of the stolen thread
     madi_resume_context(ctx);
@@ -464,6 +464,8 @@ bool worker::steal_with_lock(taskq_entry *entry,
     uth_comm& c = madi::proc().com();
 
     size_t target = select_victim(c);
+    *victim = target;
+
     taskq_entry *entries = taskq_entries_array_[target];
     taskque *taskq = taskq_array_[target];
     
@@ -513,7 +515,6 @@ bool worker::steal_with_lock(taskq_entry *entry,
 
     g_prof->n_success_steals += 1;
 
-    *victim = target;
     *taskq_ptr = taskq;  // for unlock when task stack is transfered
     return true;
 }
@@ -551,7 +552,12 @@ bool worker::steal_by_rdmas()
 
     taskq_entry& stolen_entry = *taskq_entry_buf_;
     taskque *taskq;
+
+    logger::begin_data bd = logger::begin_event<logger::kind::WORKER_TRY_STEAL>();
+
     bool success = steal_with_lock(&stolen_entry, &victim, &taskq);
+
+    logger::end_event<logger::kind::WORKER_TRY_STEAL>(bd, victim);
 
     if (success) {
         // next_steal() is called when stolen thread resumed.
