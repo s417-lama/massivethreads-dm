@@ -15,10 +15,6 @@
 #define MADI_CB_DPUTS(s, ...)
 #endif
 
-#ifndef MADI_MPI3_ENABLE_POLL
-#define MADI_MPI3_ENABLE_POLL 0
-#endif
-
 #ifndef MADI_MPI3_USE_CAS
 #define MADI_MPI3_USE_CAS 1
 #endif
@@ -38,6 +34,8 @@ namespace comm {
         comm_alc_ = new allocator<comm_memory>(cmr_);
 
         value_buf_ = (long *)comm_alc_->allocate(sizeof(long), native_config_);
+
+        polling_ = get_env("MADM_MPI3_POLLING", false);
     }
 
     comm_base::~comm_base()
@@ -233,25 +231,25 @@ namespace comm {
 
     int comm_base::poll(int *tag_out, int *pid_out, process_config& config)
     {
-#if MADI_MPI3_ENABLE_POLL
-        logger::begin_data bd = logger::begin_event<logger::kind::COMM_POLL>();
+        if (polling_) {
+            logger::begin_data bd = logger::begin_event<logger::kind::COMM_POLL>();
 
-        // `MPI_Iprobe` is used to make progress on RMA operations, especially for MPICH.
-        // Otherwise `MPI_Win_flush_all` gets stuck at the origin process because
-        // the target process does not make progress on any RMA operations.
-        // Setting `MPICH_ASYNC_PROGRESS=1` also resolves this issue without `MPI_Iprobe`,
-        // but it will introduce additional overheads.
-        //
-        // References:
-        // * https://lists.mpich.org/mailman/htdig/discuss/2014-September/001944.html
-        // * https://community.intel.com/t5/Intel-oneAPI-HPC-Toolkit/MPI-polling-passive-rma-operations/td-p/1052066
-        int flag;
-        MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
+            // `MPI_Iprobe` is used to make progress on RMA operations, especially for MPICH.
+            // Otherwise `MPI_Win_flush_all` gets stuck at the origin process because
+            // the target process does not make progress on any RMA operations.
+            // Setting `MPICH_ASYNC_PROGRESS=1` also resolves this issue without `MPI_Iprobe`,
+            // but it will introduce additional overheads.
+            //
+            // References:
+            // * https://lists.mpich.org/mailman/htdig/discuss/2014-September/001944.html
+            // * https://community.intel.com/t5/Intel-oneAPI-HPC-Toolkit/MPI-polling-passive-rma-operations/td-p/1052066
+            int flag;
+            MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
 
-        sync();
+            sync();
 
-        logger::end_event<logger::kind::COMM_POLL>(bd);
-#endif
+            logger::end_event<logger::kind::COMM_POLL>(bd);
+        }
         return 0;
     }
 

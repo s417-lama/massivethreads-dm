@@ -29,10 +29,10 @@ namespace comm {
         if (!init)
             MPI_Init(&argc, &argv);
 
-        g.comm = new comm_system(argc, argv, handler);
-
         g.debug_out = stderr;
         MPI_Comm_rank(MPI_COMM_WORLD, &g.debug_pid);
+
+        g.comm = new comm_system(argc, argv, handler);
 
         logger::init(g.debug_pid);
         logger::checkpoint<logger::kind::INIT>();

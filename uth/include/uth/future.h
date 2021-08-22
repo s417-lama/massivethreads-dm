@@ -68,9 +68,12 @@ namespace madi {
         uint64_t **idxes_;
         T **data_;
 
+        uint64_t local_buf_size_;
+        std::vector< std::vector<T> > local_buf_;
+
         logger::begin_data log_bd_;
     public:
-        dist_pool(uth_comm& c, int size);
+        dist_pool(uth_comm& c, int size, int local_buf_size);
         ~dist_pool();
 
         bool empty(uth_pid_t target);

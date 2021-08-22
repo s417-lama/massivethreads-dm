@@ -112,7 +112,7 @@ void worker::initialize(uth_comm& c)
     MADI_ASSERT(waitq_.size() == 0);
     waitq_.clear();
 
-    size_t future_buf_size = 128 * 1024; // FIXME: does not work with 4MB
+    size_t future_buf_size = get_env("MADM_FUTURE_POOL_BUF_SIZE", 128 * 1024); // FIXME: does not work with 4MB
     fpool_.initialize(c, future_buf_size);
 }
 

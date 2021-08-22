@@ -176,17 +176,23 @@ namespace madi {
     }
 
     template <class T>
-    inline dist_pool<T>::dist_pool(uth_comm& c, int size) :
+    inline dist_pool<T>::dist_pool(uth_comm& c, int size, int local_buf_size) :
         c_(c),
         size_(size),
         locks_(c),
         idxes_(NULL),
-        data_(NULL)
+        data_(NULL),
+        local_buf_size_(local_buf_size)
     {
         uth_pid_t me = c.get_pid();
+        size_t nprocs = c.get_n_procs();
 
         idxes_ = (uth_comm::lock_t **)c_.malloc_shared(sizeof(uth_comm::lock_t));
         data_ = (T **)c_.malloc_shared(sizeof(T) * size);
+
+        for (size_t i = 0; i < nprocs; i++) {
+            local_buf_.push_back(std::vector<T>());
+        }
 
         *idxes_[me] = 0UL;
     }
@@ -222,30 +228,37 @@ namespace madi {
     {
         logger::begin_data bd = logger::begin_event<logger::kind::DIST_POOL_PUSH>();
 
-        locks_.lock(target);
-        
-        MADI_DPUTSP2("PUSH REMOTE IDX INCR");
+        bool success = true;
 
-        uint64_t *idx_ptr = idxes_[target];
-        uint64_t idx = c_.fetch_and_add(idx_ptr, 1UL, target);
+        local_buf_[target].push_back(v);
+        uint64_t buffered_size = local_buf_[target].size();
 
-        MADI_ASSERT(0 <= idx && idx < size_);
+        if (buffered_size >= local_buf_size_) {
+            locks_.lock(target);
 
-        bool success;
-        if (idx < size_) {
-            T *buf = data_[target] + idx;
+            MADI_DPUTSP2("PUSH REMOTE IDX INCR");
 
-            // v is on a stack registered for RDMA
-            c_.put_buffered(buf, &v, sizeof(T), target);
+            uint64_t *idx_ptr = idxes_[target];
+            uint64_t idx = c_.fetch_and_add(idx_ptr, buffered_size, target);
 
-            success = true;
-        } else {
-            // pool becomes full
-            c_.put_value(idx_ptr, idx, target);
-            success = false;
+            MADI_ASSERT(0 <= idx && idx < size_);
+
+            if (idx + buffered_size <= size_) {
+                T *buf = data_[target] + idx;
+
+                // v is on a stack registered for RDMA
+                c_.put_buffered(buf, local_buf_[target].data(),
+                                sizeof(T) * buffered_size, target);
+
+                local_buf_[target].clear();
+            } else {
+                // pool becomes full
+                c_.put_value(idx_ptr, idx, target);
+                success = false;
+            }
+
+            locks_.unlock(target);
         }
-
-        locks_.unlock(target);
 
         logger::end_event<logger::kind::DIST_POOL_PUSH>(bd, target);
 
@@ -306,13 +319,15 @@ namespace madi {
 
     inline void future_pool::initialize(uth_comm& c, size_t buf_size)
     {
-        int retpool_size = 16 * 1024;
+        int retpool_size = get_env("MADM_FUTURE_POOL_RETPOOL_SIZE", 16 * 1024);
+        int retpool_local_buf_size = get_env("MADM_FUTURE_POOL_LOCAL_BUF_SIZE", 3);
 
         ptr_ = 0;
         buf_size_ = (int)buf_size;
 
         remote_bufs_ = (uint8_t **)c.malloc_shared(buf_size);
-        retpools_ = new dist_pool<retpool_entry>(c, retpool_size);
+        retpools_ = new dist_pool<retpool_entry>(c, retpool_size,
+                retpool_local_buf_size);
     }
 
     inline void future_pool::finalize(uth_comm& c)

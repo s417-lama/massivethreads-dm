@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cassert>
+#include <sstream>
+#include <iostream>
 
 #include <sys/time.h>
 
@@ -169,6 +171,32 @@ namespace madi {
 #define MADI_SPMD_PERR_DIE(str) \
     MADI_SPMD_DIE("`%s' failed with error `%s'", (str), strerror(errno))
 
+    template <typename T>
+    T get_env_(const char* env_var, T default_val) {
+        if (const char* val_str = std::getenv(env_var)) {
+            T val;
+            std::stringstream ss(val_str);
+            ss >> val;
+            if (ss.fail()) {
+                fprintf(stderr, "Environment variable '%s' is invalid.\n", env_var);
+                exit(1);
+            }
+            return val;
+        } else {
+            return default_val;
+        }
+    }
+
+    template <typename T>
+    T get_env(const char* env_var, T default_val) {
+        static bool print_env = get_env_("MADM_PRINT_ENV", false);
+
+        T val = get_env_(env_var, default_val);
+        if (print_env && madi_get_debug_pid() == 0) {
+            std::cerr << env_var << " = " << val << std::endl;
+        }
+        return val;
+    }
 }
 
 #endif
