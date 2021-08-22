@@ -63,8 +63,11 @@ namespace madi {
         long get_value(long *src, uth_pid_t target);
         uint64_t get_value(uint64_t *src, uth_pid_t target);
         void swap(int *dst, int *src, uth_pid_t target);
-        uint64_t fetch_and_add(uint64_t *dst, uint64_t value,
-                               uth_pid_t target);
+        template <class T>
+        T fetch_and_add(T *dst, T value, uth_pid_t target)
+        {
+            return comm::fetch_and_add(dst, value, target);
+        }
 
         using lock_t = comm::lock_t;
 

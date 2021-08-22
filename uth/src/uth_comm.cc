@@ -127,12 +127,6 @@ namespace madi {
         MADI_UNDEFINED;
     }
 
-    uint64_t uth_comm::fetch_and_add(uint64_t *dst, uint64_t value,
-                                     uth_pid_t target)
-    {
-        return comm::fetch_and_add<uint64_t>(dst, value, target);
-    }
-
     void uth_comm::lock_init(lock_t* lp)
     {
         return comm::lock_init(lp);

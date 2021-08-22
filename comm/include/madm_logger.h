@@ -267,7 +267,7 @@ namespace madi {
         template <kind k>
         static inline void checkpoint() {}
         template <kind k>
-        static inline begin_data begin_event() {}
+        static inline begin_data begin_event() { return NULL; }
         template <kind k>
         static inline void end_event(begin_data bp) {}
         template <kind k, typename MISC>

@@ -73,21 +73,26 @@ namespace madi {
 
         int b = base_;
 
-        if (b + 1 < t) {
+        if (b <= t) {
             result = &entries_[t];
         } else {
             pid_t me = c.get_pid();
-            c.lock(&lock_, me);
 
+            top_ = t + 1;
+            c.lock(&lock_, me);
+            top_ = t;
             b = base_;
 
-            if (b <= t) {
+            if (b < t) {
                 result = &entries_[t];
-            } else {
+            } else if (b == t) {
+                result = &entries_[t];
                 top_ = n_entries_ / 2;
                 base_ = top_;
-
+            } else {
                 result = NULL;
+                top_ = n_entries_ / 2;
+                base_ = top_;
             }
 
             c.unlock(&lock_, me);
@@ -158,19 +163,14 @@ namespace madi {
         // assume that this function is protected by
         // steal_trylock and steal_unlock.
 
-        global_taskque& self = *taskq_buf; // RMA buffer
-        c.get(&self, this, sizeof(self), target);
-        int b = self.base_;
-        int t = self.top_;
-
-//        MADI_DPUTS3("t (top) = %d", t);
-
         bool result;
-        if (b < t) {
-            c.put_value((int *)&base_, self.base_ + 1, target);
 
+        int b = c.fetch_and_add((int *)&base_, 1, target);
+        int t = c.get_value((int *)&top_, target);
+
+        if (b < t) {
             MADI_DPUTS3("RDMA_GET(%p, %p, %zu) rma_entries[%d] = %p",
-                        entry, &entries[b], sizeof(*entry), 
+                        entry, &entries[b], sizeof(*entry),
                         target, entries);
 
             MADI_CHECK(entries != NULL);
@@ -181,6 +181,7 @@ namespace madi {
 
             result = true;
         } else {
+            c.fetch_and_add((int *)&base_, -1, target);
             result = false;
         }
 
