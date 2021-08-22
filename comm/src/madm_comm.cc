@@ -132,16 +132,14 @@ namespace comm {
     {
         MADI_ASSERT(0 <= target && target < get_n_procs());
 
-        g.comm->reg_put_nbi(id, dst, src, size, target);
-        fence();
+        g.comm->reg_put(id, dst, src, size, target);
     }
 
     void reg_get(int id, void *dst, void *src, size_t size, pid_t target)
     {
         MADI_ASSERT(0 <= target && target < get_n_procs());
 
-        g.comm->reg_get_nbi(id, dst, src, size, target);
-        fence();
+        g.comm->reg_get(id, dst, src, size, target);
     }
 
     void barrier()

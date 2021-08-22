@@ -44,6 +44,14 @@ namespace comm {
         void free(void *p, process_config& config);
         int  coll_mmap(uint8_t *addr, size_t size, process_config& config);
         void coll_munmap(int memid, process_config& config);
+        void put(void *dst, void *src, size_t size, int target,
+                 process_config& config);
+        void reg_put(int memid, void *dst, void *src, size_t size,
+                     int target, process_config& config);
+        void get(void *dst, void *src, size_t size, int target,
+                 process_config& config);
+        void reg_get(int memid, void *dst, void *src, size_t size,
+                     int target, process_config& config);
         void put_nbi(void *dst, void *src, size_t size, int target,
                      process_config& config);
         void reg_put_nbi(int memid, void *dst, void *src, size_t size,
@@ -52,14 +60,10 @@ namespace comm {
                      process_config& config);
         void reg_get_nbi(int memid, void *dst, void *src, size_t size,
                          int target, process_config& config);
-//         void raw_put(int tag, void *dst, void *src, size_t size, int target,
-//                      int me);
-//         void raw_put_ordered(int tag, void *dst, void *src, size_t size,
-//                              int target, int me);
-//         void raw_put_with_notice(int tag, void *dst, void *src, size_t size,
-//                                  int target, int me);
-        void raw_put__(int memid, void *dst, void *src, size_t size,
-                       int target, int flags, int me);
+        template <bool BLOCKING>
+        void raw_put(int memid, void *dst, void *src, size_t size,
+                     int target, int flags, int me);
+        template <bool BLOCKING>
         void raw_get(int memid, void *dst, void *src, size_t size,
                      int target, int flags, int me);
         int  poll(int *tag_out, int *pid_out, process_config& config);
@@ -72,8 +76,7 @@ namespace comm {
         {
             *(T *)value_buf_ = value;
 
-            put_nbi(dst, (void *)value_buf_, sizeof(T), target, config);
-            fence();
+            put(dst, (void *)value_buf_, sizeof(T), target, config);
         }
 
         template <class T>
@@ -83,8 +86,7 @@ namespace comm {
                 *value_buf_ = 0xFFFFFFFFFFFFFFFF;
             });
 
-            get_nbi((void *)value_buf_, src, sizeof(T), target, config);
-            fence();
+            get((void *)value_buf_, src, sizeof(T), target, config);
 
             return *(T *)value_buf_;
         }

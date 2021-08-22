@@ -105,6 +105,34 @@ namespace comm {
         cmr_->coll_munmap(memid, config);
     }
 
+    void comm_base::put(void *dst, void *src, size_t size, int target,
+                        process_config& config)
+    {
+        reg_put(-1, dst, src, size, target, config);
+    }
+
+    void comm_base::reg_put(int memid, void *dst, void *src, size_t size,
+                            int target, process_config& config)
+    {
+        int pid = config.native_pid(target);
+        int me = config.get_native_pid();
+        raw_put<true>(memid, dst, src, size, pid, 0, me);
+    }
+
+    void comm_base::get(void *dst, void *src, size_t size, int target,
+                        process_config& config)
+    {
+        reg_get(-1, dst, src, size, target, config);
+    }
+
+    void comm_base::reg_get(int memid, void *dst, void *src, size_t size,
+                            int target, process_config& config)
+    {
+        int pid = config.native_pid(target);
+        int me = config.get_native_pid();
+        raw_get<true>(memid, dst, src, size, pid, 0, me);
+    }
+
     void comm_base::put_nbi(void *dst, void *src, size_t size, int target,
                             process_config& config)
     {
@@ -116,7 +144,7 @@ namespace comm {
     {
         int pid = config.native_pid(target);
         int me = config.get_native_pid();
-        raw_put__(memid, dst, src, size, pid, 0, me);
+        raw_put<false>(memid, dst, src, size, pid, 0, me);
     }
 
     void comm_base::get_nbi(void *dst, void *src, size_t size, int target,
@@ -130,34 +158,12 @@ namespace comm {
     {
         int pid = config.native_pid(target);
         int me = config.get_native_pid();
-        raw_get(memid, dst, src, size, pid, 0, me);
+        raw_get<false>(memid, dst, src, size, pid, 0, me);
     }
 
-//     void comm_base::raw_put(int tag, void *dst, void *src, size_t size,
-//                             int target, int me)
-//     {
-//         raw_put__(-1, dst, src, size, target, tag, 0, me);
-//         /* no handle */
-//     }
-
-//     void comm_base::raw_put_ordered(int tag, void *dst, void *src, size_t size,
-//                                     int target, int me)
-//     {
-//         raw_put__(-1, dst, src, size, target, FJMPI_RDMA_STRONG_ORDER,
-//                 me);
-//         /* no handle */
-//     }
-
-//     void comm_base::raw_put_with_notice(int tag, void *dst, void *src,
-//                                         size_t size, int target, int me)
-//     {
-//         raw_put__(-1, dst, src, size, target, tag, FJMPI_RDMA_REMOTE_NOTICE,
-//                   me);
-//         /* no handle */
-//     }
-//
-    void comm_base::raw_put__(int memid, void *dst, void *src, size_t size,
-                              int target, int flags, int me)
+    template <bool BLOCKING>
+    void comm_base::raw_put(int memid, void *dst, void *src, size_t size,
+                            int target, int flags, int me)
     {
         logger::begin_data bd = logger::begin_event<logger::kind::COMM_PUT>();
 
@@ -179,9 +185,14 @@ namespace comm {
         // issue
         MPI_Put(src, size, MPI_BYTE, target, target_disp, size, MPI_BYTE, win);
 
+        if (BLOCKING) {
+            MPI_Win_flush(target, win);
+        }
+
         logger::end_event<logger::kind::COMM_PUT>(bd, target);
     }
 
+    template <bool BLOCKING>
     void comm_base::raw_get(int memid, void *dst, void *src, size_t size,
                             int target, int flags, int me)
     {
@@ -204,6 +215,10 @@ namespace comm {
 
         // issue
         MPI_Get(dst, size, MPI_BYTE, target, target_disp, size, MPI_BYTE, win);
+
+        if (BLOCKING) {
+            MPI_Win_flush(target, win);
+        }
 
         logger::end_event<logger::kind::COMM_GET>(bd, target);
     }

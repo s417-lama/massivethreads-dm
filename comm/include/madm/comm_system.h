@@ -116,10 +116,18 @@ namespace comm {
         { c_.native_barrier(*config_); }
 
         void put(void *dst, void *src, size_t size, int target)
-        { put_nbi(dst, src, size, target); fence(); }
+        { c_.put(dst, src, size, target, *config_); }
+
+        void reg_put(int memid, void *dst, void *src, size_t size,
+                     int target)
+        { c_.reg_put(memid, dst, src, size, target, *config_); }
 
         void get(void *dst, void *src, size_t size, int target)
-        { get_nbi(dst, src, size, target); fence(); }
+        { c_.get(dst, src, size, target, *config_); }
+
+        void reg_get(int memid, void *dst, void *src, size_t size,
+                     int target)
+        { c_.reg_get(memid, dst, src, size, target, *config_); }
 
         template <class T>
         void put_value(T *dst, T value, int target)
