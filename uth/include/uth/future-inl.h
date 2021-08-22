@@ -372,7 +372,7 @@ namespace madi {
         int real_size = 1 << idx;
 
         // move future ids from the return pool to the local pool
-        if (!retpools_->empty(me)) {
+        if (id_pools_[idx].empty() && !retpools_->empty(me)) {
             move_back_returned_ids();
         }
 
