@@ -161,7 +161,6 @@ void resume_saved_context(saved_context *sctx, saved_context *next_sctx)
 void worker::do_scheduler_work()
 {
     uth_comm& c = madi::proc().com();
-    taskq_entry *entry = taskq_->pop(c);
 
     // call a user-specified polling function
     madi::proc().call_user_poll();
@@ -169,48 +168,24 @@ void worker::do_scheduler_work()
     // call a polling function for communication progress
     MADI_UTH_COMM_POLL();
 
-    if (entry != NULL) {
-        // switch to the parent task
+    // work stealing
+    bool success = steal();
 
-        // FIXME: this part is not executed
-        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_LWT>();
+    if (success) {
+        // do nothing (stolen function is resumed at the steal() function)
+    } else if (!waitq_.empty()) {
+        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_HWT>();
 
-        MADI_ASSERT(!is_main_task_);
-        MADI_DPUTSB2("resuming the parent task");
-        suspend(resume_context, entry->ctx);
-    } else if (!is_main_task_ && main_ctx_ != NULL) {
-        // if this task is not the main task,
-        // and the main task is not suspended (the frames are on the stack),
-        // switch to the main task
+        main_ctx_ = NULL;
 
-        // FIXME: this part is not executed
-        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_LWT>();
-
-        is_main_task_ = true;
-        MADI_DPUTSB2("resuming the main task");
-        suspend(resume_context, main_ctx_);
+        // switch to a waiting task
+        MADI_DPUTSB2("resuming a waiting task");
+        saved_context *sctx = waitq_.front();
+        waitq_.pop_front();
+        suspend(resume_saved_context, sctx);
     } else {
-//        MADI_ASSERT(is_main_task_);
-
-        // work stealing 
-        bool success = steal();
-
-        if (success) {
-            // do nothing (stolen function is resumed at the steal() function)
-        } else if (!waitq_.empty()) {
-            bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_HWT>();
-
-            main_ctx_ = NULL;
-
-            // switch to a waiting task
-            MADI_DPUTSB2("resuming a waiting task");
-            saved_context *sctx = waitq_.front();
-            waitq_.pop_front();
-            suspend(resume_saved_context, sctx);
-        } else {
-            // do nothing
-            MADI_DPUTS2("nothing to do");
-        }
+        // do nothing
+        MADI_DPUTS2("nothing to do");
     }
 }
 

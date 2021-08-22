@@ -60,10 +60,6 @@ namespace madi {
     {
         logger::begin_data bd = logger::begin_event<logger::kind::TASKQ_POP>();
 
-// pop operation must block until a thief is acquiring lock_.
-//         // quick check
-//         if (top_ <= base_)
-//             return NULL;
         taskq_entry *result;
 
         int t = top_ - 1;
