@@ -15,6 +15,10 @@
 #define MADI_CB_DPUTS(s, ...)
 #endif
 
+#ifndef MADI_MPI3_ENABLE_POLL
+#define MADI_MPI3_ENABLE_POLL 0
+#endif
+
 namespace madi {
 namespace comm {
 
@@ -225,6 +229,7 @@ namespace comm {
 
     int comm_base::poll(int *tag_out, int *pid_out, process_config& config)
     {
+#if MADI_MPI3_ENABLE_POLL
         logger::begin_data bd = logger::begin_event<logger::kind::COMM_POLL>();
 
         // `MPI_Iprobe` is used to make progress on RMA operations, especially for MPICH.
@@ -242,7 +247,7 @@ namespace comm {
         sync();
 
         logger::end_event<logger::kind::COMM_POLL>(bd);
-
+#endif
         return 0;
     }
 
