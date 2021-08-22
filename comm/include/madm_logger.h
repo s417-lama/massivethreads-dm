@@ -165,8 +165,10 @@ namespace madi {
             uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t);
             uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t);
 
+            uint64_t t_offset = global_clock::get_offset();
+
             logger& lgr = get_instance_();
-            fprintf(stream, "%d,%lu,%d,%lu,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name(k));
+            fprintf(stream, "%d,%lu,%d,%lu,%s\n", lgr.rank_, t0 - t_offset, lgr.rank_, t1 - t_offset, kind_name(k));
             return buf1;
         }
 
@@ -176,10 +178,12 @@ namespace madi {
             uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t);
             MISC     m  = MLOG_READ_ARG(&buf1, MISC);
 
+            uint64_t t_offset = global_clock::get_offset();
+
             logger& lgr = get_instance_();
             std::stringstream ss;
             ss << m;
-            fprintf(stream, "%d,%lu,%d,%lu,%s,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name(k), ss.str().c_str());
+            fprintf(stream, "%d,%lu,%d,%lu,%s,%s\n", lgr.rank_, t0 - t_offset, lgr.rank_, t1 - t_offset, kind_name(k), ss.str().c_str());
             return buf1;
         }
 
@@ -219,7 +223,7 @@ namespace madi {
         static inline void checkpoint() {
             if (is_valid_kind_(k)) {
                 logger& lgr = get_instance_();
-                uint64_t t = global_clock::get_time();
+                uint64_t t = global_clock::get_local_time();
                 if (lgr.bp_) {
                     auto fn = &logger_decoder_tl_<k>;
                     MLOG_END(&lgr.md_, 0, lgr.bp_, fn, t);
@@ -232,7 +236,7 @@ namespace madi {
         static inline begin_data begin_event() {
             if (is_valid_kind_(k)) {
                 logger& lgr = get_instance_();
-                uint64_t t = global_clock::get_time();
+                uint64_t t = global_clock::get_local_time();
                 begin_data bp = MLOG_BEGIN(&lgr.md_, 0, t);
                 return bp;
             } else {
@@ -244,7 +248,7 @@ namespace madi {
         static inline void end_event(begin_data bp) {
             if (is_valid_kind_(k)) {
                 logger& lgr = get_instance_();
-                uint64_t t = global_clock::get_time();
+                uint64_t t = global_clock::get_local_time();
                 auto fn = &logger_decoder_tl_<k>;
                 MLOG_END(&lgr.md_, 0, bp, fn, t);
             }
@@ -254,7 +258,7 @@ namespace madi {
         static inline void end_event(begin_data bp, MISC m) {
             if (is_valid_kind_(k)) {
                 logger& lgr = get_instance_();
-                uint64_t t = global_clock::get_time();
+                uint64_t t = global_clock::get_local_time();
                 auto fn = &logger_decoder_tl_w_misc_<k, MISC>;
                 MLOG_END(&lgr.md_, 0, bp, fn, t, m);
             }

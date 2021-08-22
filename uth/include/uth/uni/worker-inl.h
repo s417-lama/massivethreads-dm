@@ -233,12 +233,8 @@ namespace madi {
 
         MADI_DPUTS2("start (tls = %p)", &tls);
 
-        logger::checkpoint<logger::kind::SCHED>();
-
         // execute a child thread
         tuple_apply<void>::f<F, Args...>(f, arg);
-
-        logger::checkpoint<logger::kind::THREAD>();
 
         MADI_DPUTS2("end (tls = %p)", &tls);
 

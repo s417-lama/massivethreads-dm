@@ -475,7 +475,7 @@ namespace madi {
             *value = e->value;
         }
 
-        logger::end_event<logger::kind::FUTURE_POOL_SYNC>(bd);
+        logger::end_event<logger::kind::FUTURE_POOL_SYNC>(bd, pid);
 
         return e->done;
     }

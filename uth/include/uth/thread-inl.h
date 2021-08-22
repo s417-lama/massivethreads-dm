@@ -36,7 +36,11 @@ namespace uth {
     template <class F, class... Args>
     void thread<T>::start(future<T> fut, F f, Args... args)
     {
+        madi::logger::checkpoint<madi::logger::kind::SCHED>();
+
         T value = f(args...);
+
+        madi::logger::checkpoint<madi::logger::kind::THREAD>();
 
         fut.set(value);
     }
@@ -76,7 +80,11 @@ namespace uth {
         template <class F, class... Args>
         static void start(future<long> fut, F f, Args... args)
         {
+            madi::logger::checkpoint<madi::logger::kind::SCHED>();
+
             f(args...);
+
+            madi::logger::checkpoint<madi::logger::kind::THREAD>();
 
             long value = 0;
             fut.set(value);
