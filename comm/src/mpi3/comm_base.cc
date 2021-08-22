@@ -19,6 +19,10 @@
 #define MADI_MPI3_ENABLE_POLL 0
 #endif
 
+#ifndef MADI_MPI3_USE_CAS
+#define MADI_MPI3_USE_CAS 1
+#endif
+
 namespace madi {
 namespace comm {
 
@@ -326,9 +330,15 @@ namespace comm {
         size_t target_disp;
         cmr_->translate(-1, lp, sizeof(lock_t), target, &target_disp, &win);
 
-        constexpr lock_t inc = 1;
         lock_t result;
+#if MADI_MPI3_USE_CAS
+        constexpr lock_t zero = 0;
+        constexpr lock_t one = 1;
+        MPI_Compare_and_swap(&one, &zero, &result, MPI_LOCK_T, target, target_disp, win);
+#else
+        constexpr lock_t inc = 1;
         MPI_Fetch_and_op(&inc, &result, MPI_LOCK_T, target, target_disp, MPI_SUM, win);
+#endif
         MPI_Win_flush(target, win);
 
         logger::end_event<logger::kind::COMM_TRYLOCK>(bd, target);
