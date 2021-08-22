@@ -437,9 +437,9 @@ namespace madi {
 
         entry<T> entry_buf;
         if (pid != me) {
-#if 0
+#if 1
             // Is this safe in terms of memory ordering???
-            c.get(&entry_buf, e, sizeof(e), pid);
+            c.get(&entry_buf, e, sizeof(entry<T>), pid);
 #else
             entry_buf.done = c.get_value(&e->done, pid);
 
