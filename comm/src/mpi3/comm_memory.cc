@@ -15,10 +15,10 @@ namespace comm {
 #define CMR_BASE_ADDR  (reinterpret_cast<uint8_t *>(0x30000000000))
 
     enum cmr_constants {
-        CMR_MAX_BITS = 32,
+        CMR_MAX_BITS = 30,
         CMR_MAX_SIZE = 1UL << CMR_MAX_BITS,
 
-        CMR_PROC_BITS = 8,
+        CMR_PROC_BITS = 10,
         CMR_PROC_SIZE = 1UL << CMR_PROC_BITS,
 
         CMR_BASE_BITS = 22, // FIXME: temporal fix //13, // 8192 bytes
@@ -37,7 +37,7 @@ namespace comm {
         , rdma_idx_(0)
         , rdma_ids_(CMR_MAX_BITS - CMR_BASE_BITS, 256)
         , region_begin_(CMR_BASE_ADDR)
-        , region_end_(region_begin_ + CMR_PROC_SIZE * CMR_MAX_SIZE)
+        , region_end_(region_begin_ + (size_t)CMR_PROC_SIZE * CMR_MAX_SIZE)
     {
         int me = config.get_native_pid();
         int n_procs = config.get_native_n_procs();
@@ -62,10 +62,10 @@ namespace comm {
     {
         return idx;
     }
-    
+
     uint8_t * comm_memory::base_address(int pid) const
     {
-        return CMR_BASE_ADDR + CMR_MAX_SIZE * pid;
+        return CMR_BASE_ADDR + (size_t)CMR_MAX_SIZE * pid;
     }
 
     size_t comm_memory::size() const
@@ -141,7 +141,7 @@ namespace comm {
                 uint8_t *addr = (uint8_t *)raddrs[-3];
                 size_t size = (size_t)raddrs[-2];
                 int id = (int)raddrs[-1];
-                
+
                 if (addr <= ptr && ptr < addr + size) {
                     memid = id;
                     break;
@@ -349,8 +349,8 @@ namespace comm {
         // mmap
         do_mmap(addr, size, -1, 0);
 
-        MADI_DPUTS3("register region [%p, %p) call (size=%zu)",
-                    addr, addr + size, size);
+        MADI_DPUTS3("register region [%p, %p) call (size=%zu, memid=%d)",
+                    addr, addr + size, size, memid);
 
         double t1 = now();
 
@@ -418,7 +418,7 @@ namespace comm {
     }
 
     int comm_memory::coll_mmap(uint8_t *addr, size_t size,
-                                   process_config& config)
+                               process_config& config)
     {
         int memid;
         bool ok = rdma_ids_.pop(&memid);
