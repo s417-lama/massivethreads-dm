@@ -34,6 +34,8 @@ namespace comm {
 
         g.comm = new comm_system(argc, argv, handler);
 
+        global_clock::init();
+
         logger::init(g.debug_pid);
         logger::checkpoint<logger::kind::INIT>();
 

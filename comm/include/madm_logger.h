@@ -200,8 +200,6 @@ namespace madi {
             char filename[128];
             sprintf(filename, "madm_log_%d.ignore", rank);
             lgr.stream_ = fopen(filename, "w+");
-
-            global_clock::init();
         }
 
         static void flush() {
