@@ -72,7 +72,7 @@ namespace dtbb {
         if (last - first == 1) {
             f(first);
         } else {
-            auto mid = std::distance(first, last) / 2;
+            auto mid = first + (last - first) / 2;
 
             thread<void> th([=] { parallel_for(first, mid, f); });
             parallel_for(mid, last, f);
