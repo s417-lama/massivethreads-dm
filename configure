@@ -789,6 +789,9 @@ enable_maintainer_mode
 enable_dependency_tracking
 with_madi_debug_level
 with_comm_layer
+enable_logger
+with_logger_enabled_kinds
+with_logger_disabled_kinds
 with_gasnet
 with_gasnet_conduit
 with_gasnet_thread
@@ -1457,6 +1460,7 @@ Optional Features:
                           do not reject slow dependency extractors
   --disable-dependency-tracking
                           speeds up one-time build
+  --enable-logger         Enable logger. Default: no
   --enable-shared[=PKGS]  build shared libraries [default=no]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
@@ -1469,6 +1473,12 @@ Optional Packages:
   --with-madi-debug-level=n
                           Set debug level to n. Default: 0
   --with-comm-layer=c     Set comm layer to c. Default: shmem
+  --with-logger-enabled-kinds="KIND1 KIND2 ..."
+                          List of logger kinds to be enabled for the logger.
+                          Default: ""
+  --with-logger-disabled-kinds="KIND1 KIND2 ..."
+                          List of logger kinds to be disabled for the logger.
+                          Default: ""
   --with-gasnet=path      Set gasnet install directory to path.
   --with-gasnet-conduit=conduit
                           Set gasnet conduit to conduit (default: mpi).
@@ -7145,6 +7155,59 @@ fi
 
 cat >>confdefs.h <<_ACEOF
 #define MADI_COMM_LAYER $comm_layer
+_ACEOF
+
+
+#
+# Logger
+#
+# Check whether --enable-logger was given.
+if test "${enable_logger+set}" = set; then :
+  enableval=$enable_logger; case "${enableval}" in
+                 yes) enable_logger=1 ;;
+                 no)  enable_logger=0 ;;
+               esac
+else
+  enable_logger=0
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define MADI_ENABLE_LOGGER $enable_logger
+_ACEOF
+
+
+
+# Check whether --with-logger-enabled-kinds was given.
+if test "${with_logger_enabled_kinds+set}" = set; then :
+  withval=$with_logger_enabled_kinds; enabled_kinds=""
+             for kind in $withval; do
+               enabled_kinds+="kind::${kind},"
+             done
+else
+  enabled_kinds=""
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define MADI_LOGGER_ENABLED_KINDS {${enabled_kinds}}
+_ACEOF
+
+
+
+# Check whether --with-logger-disabled-kinds was given.
+if test "${with_logger_disabled_kinds+set}" = set; then :
+  withval=$with_logger_disabled_kinds; disabled_kinds=""
+             for kind in $withval; do
+               disabled_kinds+="kind::${kind},"
+             done
+else
+  disabled_kinds=""
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define MADI_LOGGER_DISABLED_KINDS {${disabled_kinds}}
 _ACEOF
 
 

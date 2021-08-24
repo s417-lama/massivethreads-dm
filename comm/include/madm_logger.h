@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <sstream>
 
+#include "madm/madm_comm_config.h"
+#include "madm_misc.h"
 #include "madm_global_clock.h"
 
 /* #define MLOG_DISABLE_CHECK_BUFFER_SIZE 1 */
@@ -54,12 +56,6 @@ namespace madi {
         };
 
     private:
-#ifndef MADM_LOGGER_DEFAULT_SIZE
-#define MADM_LOGGER_DEFAULT_SIZE (1 << 20)
-#endif
-        static constexpr size_t default_size_ = MADM_LOGGER_DEFAULT_SIZE;
-#undef MADM_LOGGER_DEFAULT_SIZE
-
         mlog_data_t md_;
         int rank_;
         begin_data bp_ = nullptr;
@@ -75,49 +71,19 @@ namespace madi {
         }
 
         static constexpr bool is_valid_kind_(kind k) {
-#if 0
-            kind disabled_kinds[] = {
-                /* kind::TEST, */
-                /* kind::SCHED, */
-                /* kind::THREAD, */
+            kind enabled_kinds[] = MADI_LOGGER_ENABLED_KINDS;
+            kind disabled_kinds[] = MADI_LOGGER_DISABLED_KINDS;
 
-                /* kind::TASKQ_PUSH, */
-                /* kind::TASKQ_POP, */
-                /* kind::TASKQ_STEAL, */
-                /* kind::TASKQ_EMPTY, */
+            static_assert(!(sizeof(enabled_kinds) > 0 && sizeof(disabled_kinds) > 0),
+                          "Enabled kinds and disabled kinds cannot be specified at the same time.");
 
-                /* kind::FUTURE_POOL_SYNC, */
-                /* kind::FUTURE_POOL_FILL, */
-                /* kind::FUTURE_POOL_GET, */
-
-                /* kind::DIST_POOL_PUSH, */
-                /* kind::DIST_POOL_POP, */
-
-                /* kind::DIST_SPINLOCK_LOCK, */
-                /* kind::DIST_SPINLOCK_UNLOCK, */
-
-                /* kind::WORKER_RESUME_LWT, */
-                /* kind::WORKER_RESUME_HWT, */
-                /* kind::WORKER_RESUME_REMOTE, */
-                /* kind::WORKER_TRY_STEAL, */
-
-                /* kind::COMM_PUT, */
-                /* kind::COMM_GET, */
-                /* kind::COMM_FENCE, */
-                /* kind::COMM_FETCH_AND_ADD, */
-                /* kind::COMM_TRYLOCK, */
-                /* kind::COMM_LOCK, */
-                /* kind::COMM_UNLOCK, */
-                /* kind::COMM_POLL, */
-            };
-#else
-#ifndef MADM_LOGGER_DISABLED_KINDS
-#define MADM_LOGGER_DISABLED_KINDS {}
-#endif
-            kind disabled_kinds[] = MADM_LOGGER_DISABLED_KINDS;
-#undef MADM_LOGGER_DISABLED_KINDS
-#endif
-            return !kind_included_(k, disabled_kinds, sizeof(disabled_kinds) / sizeof(*disabled_kinds));
+            if (sizeof(enabled_kinds) > 0) {
+                return kind_included_(k, enabled_kinds, sizeof(enabled_kinds) / sizeof(*enabled_kinds));
+            } else if (sizeof(disabled_kinds) > 0) {
+                return !kind_included_(k, disabled_kinds, sizeof(disabled_kinds) / sizeof(*disabled_kinds));
+            } else {
+                return true;
+            }
         }
 
         static constexpr const char* kind_name(kind k) {
@@ -188,11 +154,10 @@ namespace madi {
         }
 
     public:
-#ifndef MADM_LOGGER_ENABLE
-#define MADM_LOGGER_ENABLE 0
-#endif
-#if MADM_LOGGER_ENABLE
-        static void init(int rank, size_t size = default_size_) {
+#if MADI_ENABLE_LOGGER
+        static void init(int rank) {
+            size_t size = get_env("MADM_LOGGER_INITIAL_SIZE", 1 << 20);
+
             logger& lgr = get_instance_();
             lgr.rank_ = rank;
             mlog_init(&lgr.md_, 1, size);
@@ -262,7 +227,7 @@ namespace madi {
             }
         }
 #else
-        static void init(int rank, size_t size = 0) {}
+        static void init(int rank) {}
         static void flush() {}
         static void warmup() {}
         static void clear() {}
@@ -275,7 +240,6 @@ namespace madi {
         template <kind k, typename MISC>
         static inline void end_event(begin_data bp, MISC m) {}
 #endif
-#undef MADM_LOGGER_ENABLE
     };
 
 }

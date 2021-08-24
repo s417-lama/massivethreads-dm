@@ -126,6 +126,15 @@
 /* Debug Level */
 #undef MADI_DEBUG_LEVEL
 
+/* Enable logger */
+#undef MADI_ENABLE_LOGGER
+
+/* Disabled kinds for logger */
+#undef MADI_LOGGER_DISABLED_KINDS
+
+/* Enabled kinds for logger */
+#undef MADI_LOGGER_ENABLED_KINDS
+
 /* Name of package */
 #undef PACKAGE
 

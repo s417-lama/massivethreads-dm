@@ -9,11 +9,17 @@ ISOLA_HOME=${ISOLA_HOME:-${HOME}}
 INSTALL_DIR=${INSTALL_DIR:-${ISOLA_HOME}/opt/massivethreads-dm}
 
 CFLAGS=""
-# CFLAGS="-g"
-# CFLAGS="$CFLAGS -DMADM_LOGGER_ENABLE=1"
+CFLAGS="-O3 -g $CFLAGS"
+
+enabled_kinds=""
+# disabled_kinds="SCHED THREAD"
+
+disabled_kinds=""
+# disabled_kinds="DIST_SPINLOCK_LOCK DIST_SPINLOCK_UNLOCK"
 
 # CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure
-CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3 --prefix=${INSTALL_DIR}
+# CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3 --prefix=${INSTALL_DIR}
+CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3 --enable-logger --with-logger-enabled-kinds="$enabled_kinds" --with-logger-disabled-kinds="$disabled_kinds" --prefix=${INSTALL_DIR}
 
 # debug
 # DEBUG_LEVEL=0

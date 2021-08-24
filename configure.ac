@@ -151,6 +151,39 @@ AM_CONDITIONAL([MADI_COMM_LAYER_FX10],  [test "x$comm_layer" = "xMADI_COMM_LAYER
 AC_DEFINE_UNQUOTED([MADI_COMM_LAYER],[$comm_layer],[Communication Layer])
 
 #
+# Logger
+#
+AC_ARG_ENABLE([logger],
+              [AS_HELP_STRING([--enable-logger],
+                              [Enable logger. Default: no])],
+              [case "${enableval}" in
+                 yes) enable_logger=1 ;;
+                 no)  enable_logger=0 ;;
+               esac],
+              [enable_logger=0])
+AC_DEFINE_UNQUOTED([MADI_ENABLE_LOGGER], [$enable_logger], [Enable logger])
+
+AC_ARG_WITH([logger-enabled-kinds],
+            [AS_HELP_STRING([--with-logger-enabled-kinds="KIND1 KIND2 ..."],
+                            [List of logger kinds to be enabled for the logger. Default: ""])],
+            [enabled_kinds=""
+             for kind in $withval; do
+               enabled_kinds+="kind::${kind},"
+             done],
+            [enabled_kinds=""])
+AC_DEFINE_UNQUOTED([MADI_LOGGER_ENABLED_KINDS], [{${enabled_kinds}}], [Enabled kinds for logger])
+
+AC_ARG_WITH([logger-disabled-kinds],
+            [AS_HELP_STRING([--with-logger-disabled-kinds="KIND1 KIND2 ..."],
+                            [List of logger kinds to be disabled for the logger. Default: ""])],
+            [disabled_kinds=""
+             for kind in $withval; do
+               disabled_kinds+="kind::${kind},"
+             done],
+            [disabled_kinds=""])
+AC_DEFINE_UNQUOTED([MADI_LOGGER_DISABLED_KINDS], [{${disabled_kinds}}], [Disabled kinds for logger])
+
+#
 # GASNet support
 # --with-gasnet=path
 # --with-gasnet-conduit=conduit
