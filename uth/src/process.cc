@@ -94,8 +94,7 @@ namespace madi {
 
         MADI_DPUTS2("communication layer finalized");
 
-        logger::checkpoint<logger::kind::SCHED>();
-        logger::flush();
+        logger::clear();
 
         uth_options_finalize();
 

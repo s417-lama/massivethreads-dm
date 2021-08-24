@@ -11,6 +11,7 @@
 /* #define MLOG_DISABLE_CHECK_BUFFER_SIZE 1 */
 /* #define MLOG_DISABLE_REALLOC_BUFFER    1 */
 #include "mlog/mlog.h"
+#include "mpi.h"
 
 namespace madi {
 
@@ -52,14 +53,22 @@ namespace madi {
             COMM_UNLOCK,
             COMM_POLL,
 
-            OTHER
+            OTHER,
+            __N_KINDS,
         };
 
     private:
         mlog_data_t md_;
         int rank_;
+        int nproc_;
         begin_data bp_ = nullptr;
         FILE* stream_;
+
+        bool     stat_print_per_rank_;
+        uint64_t stat_t_begin_;
+        uint64_t stat_t_end_;
+        uint64_t stat_acc_[(size_t)kind::__N_KINDS];
+        uint64_t stat_acc_total_[(size_t)kind::__N_KINDS];
 
         static inline logger& get_instance_() {
             static logger my_instance;
@@ -86,7 +95,7 @@ namespace madi {
             }
         }
 
-        static constexpr const char* kind_name(kind k) {
+        static constexpr const char* kind_name_(kind k) {
             switch (k) {
                 case kind::INIT:                 return "";
                 case kind::TEST:                 return "test";
@@ -127,39 +136,116 @@ namespace madi {
         }
 
         template <kind k>
+        static void print_kind_stat_(int rank) {
+            if (is_valid_kind_(k)) {
+                logger& lgr = get_instance_();
+                if (lgr.stat_print_per_rank_) {
+                    uint64_t acc = lgr.stat_acc_[(size_t)k];
+                    uint64_t acc_total = lgr.stat_t_end_ - lgr.stat_t_begin_;
+                    printf("(Rank %3d) %25s: %10.6f %% ( %15ld ns / %15ld ns )\n",
+                           rank, kind_name_(k), (double)acc / acc_total * 100, acc, acc_total);
+                } else {
+                    uint64_t acc = lgr.stat_acc_total_[(size_t)k];
+                    uint64_t acc_total = (lgr.stat_t_end_ - lgr.stat_t_begin_) * lgr.nproc_;
+                    printf("%25s: %10.6f %% ( %15ld ns / %15ld ns )\n",
+                           kind_name_(k), (double)acc / acc_total * 100, acc, acc_total);
+                }
+            }
+        }
+
+        template <kind k>
+        static void acc_stat_(uint64_t t0, uint64_t t1) {
+            logger& lgr = get_instance_();
+            uint64_t t0_ = std::max(t0, lgr.stat_t_begin_);
+            uint64_t t1_ = std::min(t1, lgr.stat_t_end_);
+            if (t1_ > t0_) {
+                lgr.stat_acc_[(size_t)k] += t1_ - t0_;
+            }
+        }
+
+        static void print_stat_(int rank) {
+            print_kind_stat_<kind::TEST>(rank);
+            print_kind_stat_<kind::SCHED>(rank);
+            print_kind_stat_<kind::THREAD>(rank);
+
+            print_kind_stat_<kind::TASKQ_PUSH>(rank);
+            print_kind_stat_<kind::TASKQ_POP>(rank);
+            print_kind_stat_<kind::TASKQ_STEAL>(rank);
+            print_kind_stat_<kind::TASKQ_EMPTY>(rank);
+
+            print_kind_stat_<kind::FUTURE_POOL_SYNC>(rank);
+            print_kind_stat_<kind::FUTURE_POOL_FILL>(rank);
+            print_kind_stat_<kind::FUTURE_POOL_GET>(rank);
+
+            print_kind_stat_<kind::DIST_POOL_PUSH>(rank);
+            print_kind_stat_<kind::DIST_POOL_POP>(rank);
+
+            print_kind_stat_<kind::DIST_SPINLOCK_LOCK>(rank);
+            print_kind_stat_<kind::DIST_SPINLOCK_UNLOCK>(rank);
+
+            print_kind_stat_<kind::WORKER_RESUME_LWT>(rank);
+            print_kind_stat_<kind::WORKER_RESUME_HWT>(rank);
+            print_kind_stat_<kind::WORKER_RESUME_REMOTE>(rank);
+            print_kind_stat_<kind::WORKER_TRY_STEAL>(rank);
+
+            print_kind_stat_<kind::COMM_PUT>(rank);
+            print_kind_stat_<kind::COMM_GET>(rank);
+            print_kind_stat_<kind::COMM_FENCE>(rank);
+            print_kind_stat_<kind::COMM_FETCH_AND_ADD>(rank);
+            print_kind_stat_<kind::COMM_TRYLOCK>(rank);
+            print_kind_stat_<kind::COMM_LOCK>(rank);
+            print_kind_stat_<kind::COMM_UNLOCK>(rank);
+            print_kind_stat_<kind::COMM_POLL>(rank);
+
+            print_kind_stat_<kind::OTHER>(rank);
+
+            printf("\n");
+        }
+
+        template <kind k>
         static void* logger_decoder_tl_(FILE* stream, int _rank0, int _rank1, void* buf0, void* buf1) {
-            uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t);
-            uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t);
+            logger& lgr = get_instance_();
 
             uint64_t t_offset = global_clock::get_offset();
 
-            logger& lgr = get_instance_();
-            fprintf(stream, "%d,%lu,%d,%lu,%s\n", lgr.rank_, t0 - t_offset, lgr.rank_, t1 - t_offset, kind_name(k));
+            uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t) - t_offset;
+            uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t) - t_offset;
+
+            acc_stat_<k>(t0, t1);
+
+            fprintf(stream, "%d,%lu,%d,%lu,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name_(k));
             return buf1;
         }
 
         template <kind k, typename MISC>
         static void* logger_decoder_tl_w_misc_(FILE* stream, int _rank0, int _rank1, void* buf0, void* buf1) {
-            uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t);
-            uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t);
-            MISC     m  = MLOG_READ_ARG(&buf1, MISC);
+            logger& lgr = get_instance_();
 
             uint64_t t_offset = global_clock::get_offset();
 
-            logger& lgr = get_instance_();
+            uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t) - t_offset;
+            uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t) - t_offset;
+            MISC     m  = MLOG_READ_ARG(&buf1, MISC);
+
+            acc_stat_<k>(t0, t1);
+
             std::stringstream ss;
             ss << m;
-            fprintf(stream, "%d,%lu,%d,%lu,%s,%s\n", lgr.rank_, t0 - t_offset, lgr.rank_, t1 - t_offset, kind_name(k), ss.str().c_str());
+            fprintf(stream, "%d,%lu,%d,%lu,%s,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name_(k), ss.str().c_str());
             return buf1;
         }
 
     public:
 #if MADI_ENABLE_LOGGER
-        static void init(int rank) {
+        static void init(int rank, int nproc) {
             size_t size = get_env("MADM_LOGGER_INITIAL_SIZE", 1 << 20);
 
             logger& lgr = get_instance_();
             lgr.rank_ = rank;
+            lgr.nproc_ = nproc;
+
+            lgr.stat_print_per_rank_ = get_env("MADM_LOGGER_PRINT_STAT_PER_RANK", false);
+
             mlog_init(&lgr.md_, 1, size);
 
             char filename[128];
@@ -169,7 +255,60 @@ namespace madi {
 
         static void flush() {
             logger& lgr = get_instance_();
+
+            uint64_t t = 0;
+            if (lgr.bp_) {
+                // The last checkpoint can be lost, so restore it
+                t = *((uint64_t*)lgr.bp_);
+            }
+
             mlog_flush_all(&lgr.md_, lgr.stream_);
+
+            if (lgr.bp_) {
+                lgr.bp_ = MLOG_BEGIN(&lgr.md_, 0, t);
+            }
+        }
+
+        static void flush_and_print_stat(uint64_t t_begin, uint64_t t_end) {
+            logger& lgr = get_instance_();
+
+            lgr.stat_t_begin_ = t_begin;
+            lgr.stat_t_end_ = t_end;
+
+            for (size_t k = 0; k < (size_t)kind::__N_KINDS; k++) {
+                lgr.stat_acc_[k] = 0;
+                lgr.stat_acc_total_[k] = 0;
+            }
+
+            if (lgr.bp_) {
+                // The time from the last checkpoint to `t_end` should be added
+                // assuming that the current context is in `THREAD`
+                uint64_t t_offset = global_clock::get_offset();
+                uint64_t t0 = *((uint64_t*)lgr.bp_) - t_offset;
+                acc_stat_<kind::THREAD>(t0, t_end);
+            }
+
+            flush();
+
+            if (lgr.stat_print_per_rank_) {
+                if (lgr.rank_ == 0) {
+                    print_stat_(0);
+                    for (int i = 1; i < lgr.nproc_; i++) {
+                        MPI_Recv(lgr.stat_acc_, (size_t)kind::__N_KINDS, MPI_UINT64_T,
+                                 i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        print_stat_(i);
+                    }
+                } else {
+                    MPI_Send(lgr.stat_acc_, (size_t)kind::__N_KINDS, MPI_UINT64_T,
+                             0, 0, MPI_COMM_WORLD);
+                }
+            } else {
+                MPI_Reduce(lgr.stat_acc_, lgr.stat_acc_total_, (size_t)kind::__N_KINDS,
+                           MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+                if (lgr.rank_ == 0) {
+                    print_stat_(0);
+                }
+            }
         }
 
         static void warmup() {
@@ -180,6 +319,7 @@ namespace madi {
         static void clear() {
             logger& lgr = get_instance_();
             mlog_clear_all(&lgr.md_);
+            lgr.bp_ = nullptr;
         }
 
         template <kind k>
@@ -227,8 +367,9 @@ namespace madi {
             }
         }
 #else
-        static void init(int rank) {}
+        static void init(int rank, int nproc) {}
         static void flush() {}
+        static void flush_and_print_stat() {}
         static void warmup() {}
         static void clear() {}
         template <kind k>

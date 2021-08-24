@@ -31,12 +31,14 @@ namespace comm {
 
         g.debug_out = stderr;
         MPI_Comm_rank(MPI_COMM_WORLD, &g.debug_pid);
+        int nproc;
+        MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
         g.comm = new comm_system(argc, argv, handler);
 
         global_clock::init();
 
-        logger::init(g.debug_pid);
+        logger::init(g.debug_pid, nproc);
         logger::checkpoint<logger::kind::INIT>();
 
         g.initialized = true;
