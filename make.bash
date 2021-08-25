@@ -18,8 +18,8 @@ disabled_kinds=""
 # disabled_kinds="DIST_SPINLOCK_LOCK DIST_SPINLOCK_UNLOCK"
 
 # CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure
-# CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3 --prefix=${INSTALL_DIR}
-CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3 --enable-logger --with-logger-enabled-kinds="$enabled_kinds" --with-logger-disabled-kinds="$disabled_kinds" --prefix=${INSTALL_DIR}
+CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3 --prefix=${INSTALL_DIR}
+# CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3 --enable-logger --with-logger-enabled-kinds="$enabled_kinds" --with-logger-disabled-kinds="$disabled_kinds" --prefix=${INSTALL_DIR}
 
 # debug
 # DEBUG_LEVEL=0

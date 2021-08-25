@@ -311,6 +311,7 @@ namespace madi {
 
         w1.tls_ = &tls;
 
+#if MADI_ENABLE_STEAL_PROF
         // FIXME: if this thread is stolen
         long t0 = g_prof->current_steal().tmp;
         if (t0 != 0) {
@@ -325,6 +326,7 @@ namespace madi {
 
             MADI_DPUTSR1("resume done: %d", g_prof->steals_idx);
         }
+#endif
     }
 
     void resume_saved_context(saved_context *sctx, saved_context *next_sctx);

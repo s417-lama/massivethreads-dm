@@ -9,6 +9,10 @@
 #include <deque>
 #include <tuple>
 
+#ifndef MADI_ENABLE_STEAL_PROF
+#define MADI_ENABLE_STEAL_PROF 0
+#endif
+
 namespace madi {
 
     template <class F, class... Args>

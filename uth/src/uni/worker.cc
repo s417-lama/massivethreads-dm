@@ -261,19 +261,26 @@ void madi_worker_do_resume_remote_context_1(uth_comm& c,
     //    MADI_TENTRY_ASSERT(entry);
     //    MADI_CONTEXT_ASSERT(ctx);
 
+#if MADI_ENABLE_STEAL_PROF
     long t1 = rdtsc();
+#endif
+
+#if MADI_ENABLE_STEAL_PROF
     prof_steal_entry& e = g_prof->current_steal();
     e.stack_transfer = t1 - t0;
     e.ctx = (void *)ctx;
     e.frame_size = frame_size;
     e.me = c.get_pid();
     e.victim = victim;
+#endif
 
     taskq->unlock(c, victim);
 
+#if MADI_ENABLE_STEAL_PROF
     long t2 = rdtsc();
     e.unlock = t2 - t1;
     e.tmp = t2;
+#endif
 
     MADI_DPUTSR1("resuming  [%p, %p) (size = %zu) (stolen)",
                  frame_base, frame_base + frame_size, frame_size);
@@ -319,18 +326,11 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
         memset(prev_sctx->stack_top, 1, prev_sctx->stack_size);
     });
 
-    uint8_t *remote_base = (uint8_t *)ispace.remote_ptr(frame_base, victim);
-    uint8_t *local_base = (uint8_t *)ispace.remote_ptr(frame_base, me);
-
     // alignment for RDMA operations
-    local_base  = (uint8_t *)((uintptr_t)local_base  & ~0x3);
-    remote_base = (uint8_t *)((uintptr_t)remote_base & ~0x3);
+    frame_base = (uint8_t *)((uintptr_t)frame_base & ~0x3);
     frame_size = (frame_size + 4) / 4 * 4;
 
     MADI_DEBUG2({
-        MADI_DPUTS2("RDMA_GET(%p(%p), %p, %zu)",
-                    local_base, frame_base, remote_base, frame_size);
-
         uint8_t *sp;
         MADI_GET_CURRENT_SP(&sp);
 
@@ -339,12 +339,7 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
         MADI_ASSERT(sp <= frame_base);
     });
 
-#define MADI_SHMEM 0
-#if MADI_SHMEM
-    memcpy(frame_base, remote_base, frame_size);
-#else
-    c.reg_get(local_base, remote_base, frame_size, victim);
-#endif
+    c.reg_get(frame_base, frame_base, frame_size, victim);
 
     madi_worker_do_resume_remote_context_1(c, victim, taskq, &entry,
                                            t0);
@@ -445,50 +440,68 @@ bool worker::steal_with_lock(taskq_entry *entry,
     taskque *taskq = taskq_array_[target];
     
     if (uth_options.aborting_steal) {
+#if MADI_ENABLE_STEAL_PROF
         long t0 = rdtsc();
+#endif
 
         bool do_abort = taskq->empty(c, target, taskq_buf_);
 
+#if MADI_ENABLE_STEAL_PROF
         long t1 = rdtsc();
         g_prof->current_steal().empty_check = t1 - t0;
+#endif
 
         if (do_abort) {
+#if MADI_ENABLE_STEAL_PROF
             g_prof->n_aborted_steals += 1;
+#endif
             return false;
         }
     }
 
+#if MADI_ENABLE_STEAL_PROF
     long t2 = rdtsc();
+#endif
 
     bool success;
     success = taskq->trylock(c, target);
 
+#if MADI_ENABLE_STEAL_PROF
     long t3 = rdtsc();
     g_prof->current_steal().lock = t3 - t2;
+#endif
 
     if (!success) {
         MADI_DPUTSR1("steal lock failed");
+#if MADI_ENABLE_STEAL_PROF
         g_prof->n_failed_steals_lock += 1;
+#endif
         return false;
     }
 
     success = taskq->steal(c, target, entries, entry, taskq_buf_);
 
+#if MADI_ENABLE_STEAL_PROF
     long t4 = rdtsc();
     g_prof->current_steal().steal = t4 - t3;
+#endif
 
     if (!success) {
         MADI_DPUTSR1("steal task empty");
         taskq->unlock(c, target);
 
+#if MADI_ENABLE_STEAL_PROF
         long t5 = rdtsc();
         g_prof->current_steal().unlock = t5 - t4;
         g_prof->n_failed_steals_empty += 1;
+#endif
 
         return false;
     }
 
+#if MADI_ENABLE_STEAL_PROF
     g_prof->n_success_steals += 1;
+#endif
 
     *taskq_ptr = taskq;  // for unlock when task stack is transfered
     return true;
@@ -499,11 +512,13 @@ void resume_remote_context(saved_context *sctx,
                            std::tuple<taskq_entry *, uth_pid_t,
                                       taskque *, tsc_t> *arg)
 {
+#if MADI_ENABLE_STEAL_PROF
     long t0 = std::get<3>(*arg);
     long t1 = rdtsc();
     g_prof->current_steal().suspend = t1 - t0;
 
     std::get<3>(*arg) = t1;
+#endif
 
     taskq_entry *entry = std::get<0>(*arg);
 
@@ -549,9 +564,13 @@ bool worker::steal_by_rdmas()
         // switch to the stolen task
         MADI_DPUTSB2("resuming a stolen task");
 
+#if MADI_ENABLE_STEAL_PROF
         tsc_t t = rdtsc();
+#else
+        tsc_t t = 0;
+#endif
 
-        std::tuple<taskq_entry *, uth_pid_t, taskque *, tsc_t> 
+        std::tuple<taskq_entry *, uth_pid_t, taskque *, tsc_t>
             arg(&stolen_entry, victim, taskq, t);
 
         suspend(resume_remote_context, &arg);
