@@ -369,7 +369,7 @@ namespace madi {
 #else
         static void init(int rank, int nproc) {}
         static void flush() {}
-        static void flush_and_print_stat() {}
+        static void flush_and_print_stat(uint64_t t_begin, uint64_t t_end) {}
         static void warmup() {}
         static void clear() {}
         template <kind k>
