@@ -193,7 +193,7 @@ namespace madi {
 
         T val = get_env_(env_var, default_val);
         if (print_env && madi_get_debug_pid() == 0) {
-            std::cerr << env_var << " = " << val << std::endl;
+            std::cout << env_var << " = " << val << std::endl;
         }
         return val;
     }

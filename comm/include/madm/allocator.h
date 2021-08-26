@@ -19,32 +19,47 @@ namespace comm {
     class allocator {
         alc_header *free_list_;
         MemRegion *mr_;
-        alc_header *header_;
+        alc_header *header0_;
 
     public:
-        allocator(MemRegion *mr);
+        template <class T>
+        allocator(MemRegion *mr, T& param);
         ~allocator();
 
-        template <class T>
+        template <bool extend, class T>
         void * allocate(size_t size, T& param);
         void deallocate(void *p);
     };
 
 
     template <class MR>
-    allocator<MR>::allocator(MR *mr) : free_list_(NULL), mr_(mr)
+    template <class T>
+    allocator<MR>::allocator(MR *mr, T& param) : free_list_(NULL), mr_(mr)
     {
-        header_ = new alc_header;
-        header_->next = header_;
-        header_->size = 0;
+        const size_t init_size = get_env("MADM_COMM_ALLOCATOR_INIT_SIZE", 2 * 1024 * 1024);
 
-        free_list_ = header_;
+        MADI_ASSERT(init_size % sizeof(alc_header) == 0);
+
+        alc_header *header = (alc_header *)mr_->extend_to(init_size, param);
+
+        if (header == NULL) {
+            madi::die("initial allocation failed");
+        }
+
+        header->next = NULL;
+        header->size = init_size / sizeof(alc_header);
+
+        header0_ = new alc_header;
+        header0_->next = header;
+        header0_->size = 0;
+
+        free_list_ = header0_;
     }
 
     template <class MR>
     allocator<MR>::~allocator()
     {
-        delete header_;
+        delete header0_;
     }
 
 #define MADI_ALC_ASSERT(h) \
@@ -55,11 +70,9 @@ namespace comm {
 
     // K&R malloc
     template <class MR>
-    template <class T>
+    template <bool extend, class T>
     void * allocator<MR>::allocate(size_t size, T& param)
     {
-        const size_t init_size = 2 * 1024 * 1024;
-
         size_t n_units =
             ((size + sizeof(alc_header) - 1)) / sizeof(alc_header) + 1;
 
@@ -69,30 +82,33 @@ namespace comm {
             if (h->size >= n_units)
                 break;
 
-            if (prev == free_list_) {
-                size_t prev_size = mr_->size();
-                size_t total_size = (prev_size == 0) ? init_size : prev_size*2;
+            if (h->next == NULL) {
+                if (extend) {
+                    size_t prev_size = mr_->size();
 
-                alc_header *new_header =
-                    (alc_header *)mr_->extend_to(total_size, param);
+                    alc_header *new_header =
+                        (alc_header *)mr_->extend_to(prev_size * 2, param);
 
-                if (new_header == NULL)
+                    if (new_header == NULL)
+                        return NULL;
+
+                    size_t ext_size = mr_->size() - prev_size;
+                    size_t new_n_units = ext_size / sizeof(alc_header);
+
+                    MADI_ASSERT(ext_size % sizeof(alc_header) == 0);
+
+                    new_header->next = NULL;
+                    new_header->size = new_n_units;
+
+                    deallocate((void *)(new_header + 1));
+
+                    // retry this loop
+                    h = free_list_;
+                } else {
                     return NULL;
-
-                size_t ext_size = mr_->size() - prev_size;
-                size_t new_n_units = ext_size / sizeof(alc_header);
-
-                MADI_ASSERT(ext_size % sizeof(alc_header) == 0);
-
-                new_header->next = NULL;
-                new_header->size = new_n_units;
-
-                deallocate((void *)(new_header + 1));
-
-                // retry this loop
-                prev = free_list_;
+                }
             }
-           
+
             prev = h;
             h = h->next;
         }
@@ -106,8 +122,10 @@ namespace comm {
             h->size = n_units;
         }
 
-        free_list_ = prev;
         h->next = NULL;
+
+        MADI_DPUTS1("allocate [%p, %p) (size = %ld; requested = %ld)",
+                    h, h + n_units, n_units * sizeof(alc_header), size);
 
         return (void *)(h + 1);
     }
@@ -117,13 +135,26 @@ namespace comm {
     {
         alc_header *header = (alc_header *)p - 1;
 
-        alc_header *h = free_list_;
+        MADI_DPUTS1("deallocate [%p, %p) (size = %ld)",
+                    header, header + header->size, header->size);
+
+        alc_header *h = free_list_->next;
+
+        if (h == NULL) {
+            free_list_->next = header;
+            return;
+        }
+
         for (;;) {
+            if (h < header && h->next == NULL)
+                break;
+
             if (h < header && header < h->next)
                 break;
 
-            if (h >= h->next && (h < header || header < h->next))
-                break;
+            if (h->next == NULL) {
+                madi::die("Something is wrong with free list");
+            }
 
             h = h->next;
         }
@@ -141,8 +172,6 @@ namespace comm {
         } else {
             h->next = header;
         }
-
-        free_list_ = h;
     }
 }
 }

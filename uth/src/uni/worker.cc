@@ -231,7 +231,9 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
     MADI_ASSERT(sctx->ip == ctx->instr_ptr());
     MADI_ASSERT(sctx->sp == ctx->stack_ptr());
 
-    free((void *)sctx);
+    uth_comm& c = madi::proc().com();
+
+    c.free_shared_local((void *)sctx);
 
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
                  frame_base, frame_base + frame_size, frame_size);

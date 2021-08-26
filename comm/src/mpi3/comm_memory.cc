@@ -41,6 +41,10 @@ namespace comm {
     {
         int me = config.get_native_pid();
         int n_procs = config.get_native_n_procs();
+
+        if (n_procs > CMR_PROC_SIZE) {
+            madi::die("# of processes is too large");
+        }
     }
 
     comm_memory::~comm_memory()

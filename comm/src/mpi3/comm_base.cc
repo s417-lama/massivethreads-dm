@@ -31,9 +31,9 @@ namespace comm {
         cmr_ = new comm_memory(native_config_);
 
         // initialize basic RDMA features (malloc/free/put/get)
-        comm_alc_ = new allocator<comm_memory>(cmr_);
+        comm_alc_ = new allocator<comm_memory>(cmr_, native_config_);
 
-        value_buf_ = (long *)comm_alc_->allocate(sizeof(long), native_config_);
+        value_buf_ = (long *)comm_alc_->allocate<true>(sizeof(long), native_config_);
 
         polling_ = get_env("MADM_MPI3_POLLING", false);
     }
@@ -53,7 +53,7 @@ namespace comm {
 
         void **ptrs = new void *[n_procs];
 
-        void *p = alc->allocate(size, config);
+        void *p = alc->allocate<true>(size, config);
 
         MADI_ASSERT(p != NULL);
 
@@ -79,26 +79,30 @@ namespace comm {
 
     void * comm_base::malloc(size_t size, process_config& config)
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_MALLOC>();
+
         MPI_Comm comm = config.comm();
 
-        // FIXME: non-collective implementation
-        // currently, the comm_allocater::allocate function may call
-        // collective function `extend_to'.
-        MPI_Barrier(comm);
-
         comm_allocator *alc = comm_alc_;
-        return alc->allocate(size, config);
+        void* p = alc->allocate<false>(size, config);
+
+        MADI_ASSERT(p != NULL);
+
+        logger::end_event<logger::kind::COMM_MALLOC>(bd);
+
+        return p;
     }
 
     void comm_base::free(void *p, process_config& config)
     {
-        MPI_Comm comm = config.comm();
+        logger::begin_data bd = logger::begin_event<logger::kind::COMM_FREE>();
 
-        // FIXME: non-collective implementation
-        MPI_Barrier(comm);
+        MPI_Comm comm = config.comm();
 
         comm_allocator *alc = comm_alc_;
         alc->deallocate(p);
+
+        logger::end_event<logger::kind::COMM_FREE>(bd);
     }
 
     int comm_base::coll_mmap(uint8_t *addr, size_t size, process_config& config)

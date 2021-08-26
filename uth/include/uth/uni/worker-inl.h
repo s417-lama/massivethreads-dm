@@ -383,12 +383,13 @@ namespace madi {
         void *sp__ = ctx__.stack_ptr();                                 \
         uint8_t *top__ = ctx__.top_ptr();                               \
                                                                         \
-        /*size_t stack_size__ = ctx.stack_size();*/                     \
         size_t stack_size__ = ctx__.stack_size();                       \
         size_t size__ = offsetof(saved_context, partial_stack) + stack_size__;\
                                                                         \
+        uth_comm& c = madi::proc().com();                               \
+                                                                        \
         /* copy stack frames to heap */                                 \
-        saved_context *sctx__ = (saved_context *)malloc(size__);        \
+        saved_context *sctx__ = (saved_context *)c.malloc_shared_local(size__);\
         sctx__->is_main_task = (is_main);                               \
         sctx__->ip = ip__;                                              \
         sctx__->sp = sp__;                                              \

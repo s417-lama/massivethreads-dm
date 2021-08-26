@@ -52,6 +52,8 @@ namespace madi {
             COMM_LOCK,
             COMM_UNLOCK,
             COMM_POLL,
+            COMM_MALLOC,
+            COMM_FREE,
 
             OTHER,
             __N_KINDS,
@@ -130,6 +132,8 @@ namespace madi {
                 case kind::COMM_LOCK:            return "comm_lock";
                 case kind::COMM_UNLOCK:          return "comm_unlock";
                 case kind::COMM_POLL:            return "comm_poll";
+                case kind::COMM_MALLOC:          return "comm_malloc";
+                case kind::COMM_FREE:            return "comm_free";
 
                 default:                         return "other";
             }
@@ -196,6 +200,8 @@ namespace madi {
             print_kind_stat_<kind::COMM_LOCK>(rank);
             print_kind_stat_<kind::COMM_UNLOCK>(rank);
             print_kind_stat_<kind::COMM_POLL>(rank);
+            print_kind_stat_<kind::COMM_MALLOC>(rank);
+            print_kind_stat_<kind::COMM_FREE>(rank);
 
             print_kind_stat_<kind::OTHER>(rank);
 
