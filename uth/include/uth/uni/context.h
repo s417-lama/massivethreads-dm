@@ -7,11 +7,15 @@
 #include "../misc.h"
 
 
+#if 0
 #define MADI_IP_ASSERT(ip) \
     do { \
         MADI_ASSERTP1((ip) > MADI_IP_MIN, (ip)); \
         MADI_ASSERTP1((ip) < MADI_IP_MAX, (ip)); \
     } while (false)
+#else
+#define MADI_IP_ASSERT(ip)
+#endif
 
 
 #if MADI_DEBUG_LEVEL >= 1
