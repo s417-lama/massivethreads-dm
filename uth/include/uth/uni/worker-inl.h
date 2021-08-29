@@ -111,6 +111,35 @@ namespace madi {
         MADI_DPUTS2("context resumed");
     }
 
+/*
+ * this macro must be called in the same function the ctx saved.
+ */
+#define MADI_THREAD_PACK(ctx_ptr, worker, sctx_ptr)                     \
+    do {                                                                \
+        context& ctx__ = *(ctx_ptr);                                    \
+        void *ip__ = ctx__.instr_ptr();                                 \
+        void *sp__ = ctx__.stack_ptr();                                 \
+        uint8_t *top__ = ctx__.top_ptr();                               \
+                                                                        \
+        size_t stack_size__ = ctx__.stack_size();                       \
+        size_t size__ = offsetof(saved_context, partial_stack) + stack_size__;\
+                                                                        \
+        /* copy stack frames to heap */                                 \
+        saved_context *sctx__ = (worker).alloc_suspended(size__);       \
+        sctx__->is_main_task = (worker).is_main_task_;                  \
+        sctx__->ip = ip__;                                              \
+        sctx__->sp = sp__;                                              \
+        sctx__->ctx = &ctx__;                                           \
+        sctx__->stack_top = top__;                                      \
+        sctx__->stack_size = stack_size__;                              \
+        memcpy(sctx__->partial_stack, top__, stack_size__);             \
+                                                                        \
+        MADI_DPUTSB2("suspended [%p, %p) (size = %zu)",                 \
+                     top__, top__ + stack_size__, stack_size__);        \
+                                                                        \
+        *(sctx_ptr) = sctx__;                                           \
+    } while (false)
+
     /*
       - スレッドの状態
         - running
@@ -188,12 +217,11 @@ namespace madi {
         MADI_DPUTS3("parent_ctx = %p", ctx.parent);
 
         if (w0.is_main_task_) {
-            MADI_DPUTS3("register context %p to main_ctx_", &ctx);
-
             // the main thread must not be pushed into taskq
-            // because the main thread must not be stolen by another 
+            // because the main thread must not be stolen by another
             // process.
-            w0.main_ctx_ = &ctx;
+            MADI_THREAD_PACK(ctx_ptr, w0, &w0.main_sctx_);
+
             w0.is_main_task_ = false;
 
             MADI_DPUTS2("main task saved [%p, %p) (size = %zu)",
@@ -237,42 +265,6 @@ namespace madi {
         tuple_apply<void>::f<F, Args...>(f, arg);
 
         MADI_DPUTS2("end (tls = %p)", &tls);
-
-        // renew worker (the child thread may be stolen)
-        worker& w1 = madi::current_worker();
-
-        // pop the parent thread
-        taskq_entry *entry = w1.taskq_->pop(c);
- 
-        if (entry != NULL) {
-            // the entry is not stolen
-
-            MADI_DPUTS3("pop context %p", &ctx);
-
-            MADI_CONTEXT_ASSERT(&ctx);
-            MADI_CONTEXT_ASSERT_WITHOUT_PARENT(ctx.parent);
-
-            MADI_TENTRY_ASSERT(entry);
-            MADI_ASSERT(entry->frame_base == ctx.top_ptr());
-            MADI_ASSERT(entry->frame_size == ctx.stack_size());
-            MADI_ASSERT(entry->ctx == &ctx);
-        } else {
-            // the parent thread is main or stolen
-            // (assume that a parent thread resides in the deeper
-            // position on a task deque than its child threads.)
-
-            MADI_CONTEXT_ASSERT_WITHOUT_PARENT(&ctx);
-
-            // call an event handler when parent thread is stolen
-            madi::proc().call_parent_is_stolen();
-
-            // reset thread local storage
-            w1.tls_ = NULL;
-
-            w1.go();
-
-            MADI_NOT_REACHED;
-        }
     }
 
     template <class F, class... Args>
@@ -302,7 +294,7 @@ namespace madi {
         MADI_DPUTS3("&prev_ctx = %p", &prev_ctx);
 
         worker& w1 = madi::current_worker();
-           
+
         MADI_DPUTS3("&madi_process = %p", &madi_process);
         MADI_DPUTS3("worker_id = %zu", madi_worker_id);
 
@@ -329,96 +321,54 @@ namespace madi {
 #endif
     }
 
-    void resume_saved_context(saved_context *sctx, saved_context *next_sctx);
-
-    inline void worker::go()
-    {
-//        MADI_ASSERT(main_ctx_ != NULL);
-
-        if (!is_main_task_ && main_ctx_ != NULL) {
-            // this task is not the main task,
-            // and the main task is not saved (packed).
-
-            /* bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_LWT>(); */
-
-            is_main_task_ = true;
-
-            MADI_DPUTS1("a main task is resuming");
-
-            MADI_CONTEXT_PRINT(2, main_ctx_);
-
-            /* logger::end_event<logger::kind::WORKER_RESUME_LWT>(bd_resume_); */
-
-            MADI_RESUME_CONTEXT(main_ctx_);
-        } else if (!waitq_.empty()) {
-            // here, the main task is in the waiting queue
-
-            bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_HWT>();
-
-            saved_context *sctx = waitq_.front();
-            waitq_.pop_front();
-
-            MADI_DPUTSB1("resuming a waiting task");
-
-            resume_saved_context(NULL, sctx);
-        } else {
-            MADI_NOT_REACHED;
-        }
-        
-        MADI_NOT_REACHED;
-    }
-
     inline void worker::exit()
     {
         MADI_NOT_REACHED;
     }
 
-/*
- * this macro must be called in the same function the ctx saved.
- */
-#define MADI_THREAD_PACK(ctx_ptr, is_main, sctx_ptr)                    \
-    do {                                                                \
-        context& ctx__ = *(ctx_ptr);                                    \
-        void *ip__ = ctx__.instr_ptr();                                 \
-        void *sp__ = ctx__.stack_ptr();                                 \
-        uint8_t *top__ = ctx__.top_ptr();                               \
-                                                                        \
-        size_t stack_size__ = ctx__.stack_size();                       \
-        size_t size__ = offsetof(saved_context, partial_stack) + stack_size__;\
-                                                                        \
-        uth_comm& c = madi::proc().com();                               \
-                                                                        \
-        /* copy stack frames to heap */                                 \
-        saved_context *sctx__ = (saved_context *)c.malloc_shared_local(size__);\
-        sctx__->is_main_task = (is_main);                               \
-        sctx__->ip = ip__;                                              \
-        sctx__->sp = sp__;                                              \
-        sctx__->ctx = &ctx__;                                           \
-        sctx__->stack_top = top__;                                      \
-        sctx__->stack_size = stack_size__;                              \
-        memcpy(sctx__->partial_stack, top__, stack_size__);             \
-                                                                        \
-        MADI_DPUTSB2("suspended [%p, %p) (size = %zu)",                 \
-                     top__, top__ + stack_size__, stack_size__);        \
-                                                                        \
-        *(sctx_ptr) = sctx__;                                           \
-    } while (false)
+    inline saved_context* worker::alloc_suspended(size_t size)
+    {
+        uth_comm& c = madi::proc().com();
+        saved_context* ret;
 
-    
+        ret = (saved_context *)c.malloc_shared_local(size);
+        if (ret == NULL) {
+            suspended_retpools_->begin_pop_local();
+
+            saved_context* sctx;
+            while (suspended_retpools_->pop_local(&sctx)) {
+                c.free_shared_local((void*)sctx);
+            }
+
+            suspended_retpools_->end_pop_local();
+
+            ret = (saved_context *)c.malloc_shared_local(size);
+        }
+
+        if (ret == NULL) {
+            madi::die("Allocation failed because of too small initial memory allocation size");
+        }
+
+        return ret;
+    }
+
+
     template <class F, class... Args>
     void worker_do_suspend(context *ctx_ptr, void *f_ptr, void *arg_ptr)
     {
         F f = (F)f_ptr;
         std::tuple<saved_context *, Args...> arg =
             *(std::tuple<saved_context *, Args...> *)arg_ptr;
-        
         worker& w0 = madi::current_worker();
 
-        // pack the current thread (stack)
         saved_context *sctx = NULL;
-        MADI_THREAD_PACK(ctx_ptr, w0.is_main_task_, &sctx);
 
-        if (!w0.is_main_task_) {
+        // pack the current thread (stack)
+        MADI_THREAD_PACK(ctx_ptr, w0, &sctx);
+
+        if (w0.is_main_task_) {
+            w0.main_sctx_ = sctx;
+        } else {
             MADI_CONTEXT_ASSERT(ctx_ptr);
             MADI_SCONTEXT_ASSERT(sctx);
         }
@@ -436,7 +386,7 @@ namespace madi {
 
         MADI_NOT_REACHED;
     }
- 
+
     template <class F, class... Args>
     void worker::suspend(F f, Args... args)
     {
@@ -476,6 +426,41 @@ namespace madi {
         MADI_EXECUTE_ON_STACK(madi_worker_do_resume_saved_context,
                               next_sctx, NULL, NULL, NULL,
                               next_stack_top);
+    }
+
+    inline void worker::resume_remote_suspended(suspended_entry se)
+    {
+        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_SUSPENDED>();
+
+        uth_comm& c = madi::proc().com();
+
+        uth_pid_t target = se.pid;
+        uint8_t *base = se.base;
+        size_t size = se.size;
+
+        saved_context *sctx = (saved_context *)c.malloc_shared_local(size);
+
+        c.get(sctx, base, size, target);
+
+        saved_context *remote_sctx = (saved_context*)base;
+        bool success = suspended_retpools_->push_remote(remote_sctx, target);
+
+        if (!success) {
+            madi::die("suspended return pool becomes full");
+        }
+
+        resume(sctx);
+    }
+
+    inline void worker::resume_main_task()
+    {
+        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_SUSPENDED>();
+
+        MADI_ASSERT(!is_main_task_ && main_sctx_ != NULL);
+
+        MADI_DPUTS1("a main task is resuming");
+
+        resume(main_sctx_);
     }
 
 }

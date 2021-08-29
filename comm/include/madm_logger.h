@@ -39,9 +39,8 @@ namespace madi {
             DIST_SPINLOCK_LOCK,
             DIST_SPINLOCK_UNLOCK,
 
-            WORKER_RESUME_LWT,
-            WORKER_RESUME_HWT,
-            WORKER_RESUME_REMOTE,
+            WORKER_RESUME_SUSPENDED,
+            WORKER_RESUME_STOLEN,
             WORKER_TRY_STEAL,
 
             COMM_PUT,
@@ -99,43 +98,42 @@ namespace madi {
 
         static constexpr const char* kind_name_(kind k) {
             switch (k) {
-                case kind::INIT:                 return "";
-                case kind::TEST:                 return "test";
-                case kind::SCHED:                return "sched";
-                case kind::THREAD:               return "thread";
+                case kind::INIT:                    return "";
+                case kind::TEST:                    return "test";
+                case kind::SCHED:                   return "sched";
+                case kind::THREAD:                  return "thread";
 
-                case kind::TASKQ_PUSH:           return "taskq_push";
-                case kind::TASKQ_POP:            return "taskq_pop";
-                case kind::TASKQ_STEAL:          return "taskq_steal";
-                case kind::TASKQ_EMPTY:          return "taskq_empty";
+                case kind::TASKQ_PUSH:              return "taskq_push";
+                case kind::TASKQ_POP:               return "taskq_pop";
+                case kind::TASKQ_STEAL:             return "taskq_steal";
+                case kind::TASKQ_EMPTY:             return "taskq_empty";
 
-                case kind::FUTURE_POOL_SYNC:     return "future_pool_sync";
-                case kind::FUTURE_POOL_FILL:     return "future_pool_fill";
-                case kind::FUTURE_POOL_GET:      return "future_pool_get";
+                case kind::FUTURE_POOL_SYNC:        return "future_pool_sync";
+                case kind::FUTURE_POOL_FILL:        return "future_pool_fill";
+                case kind::FUTURE_POOL_GET:         return "future_pool_get";
 
-                case kind::DIST_POOL_PUSH:       return "dist_pool_push";
-                case kind::DIST_POOL_POP:        return "dist_pool_pop";
+                case kind::DIST_POOL_PUSH:          return "dist_pool_push";
+                case kind::DIST_POOL_POP:           return "dist_pool_pop";
 
-                case kind::DIST_SPINLOCK_LOCK:   return "dist_spinlock_lock";
-                case kind::DIST_SPINLOCK_UNLOCK: return "dist_spinlock_unlock";
+                case kind::DIST_SPINLOCK_LOCK:      return "dist_spinlock_lock";
+                case kind::DIST_SPINLOCK_UNLOCK:    return "dist_spinlock_unlock";
 
-                case kind::WORKER_RESUME_LWT:    return "worker_resume_lwt";
-                case kind::WORKER_RESUME_HWT:    return "worker_resume_hwt";
-                case kind::WORKER_RESUME_REMOTE: return "worker_resume_remote";
-                case kind::WORKER_TRY_STEAL:     return "worker_try_steal";
+                case kind::WORKER_RESUME_SUSPENDED: return "worker_resume_suspended";
+                case kind::WORKER_RESUME_STOLEN:    return "worker_resume_stolen";
+                case kind::WORKER_TRY_STEAL:        return "worker_try_steal";
 
-                case kind::COMM_PUT:             return "comm_put";
-                case kind::COMM_GET:             return "comm_get";
-                case kind::COMM_FENCE:           return "comm_fence";
-                case kind::COMM_FETCH_AND_ADD:   return "comm_fetch_and_add";
-                case kind::COMM_TRYLOCK:         return "comm_trylock";
-                case kind::COMM_LOCK:            return "comm_lock";
-                case kind::COMM_UNLOCK:          return "comm_unlock";
-                case kind::COMM_POLL:            return "comm_poll";
-                case kind::COMM_MALLOC:          return "comm_malloc";
-                case kind::COMM_FREE:            return "comm_free";
+                case kind::COMM_PUT:                return "comm_put";
+                case kind::COMM_GET:                return "comm_get";
+                case kind::COMM_FENCE:              return "comm_fence";
+                case kind::COMM_FETCH_AND_ADD:      return "comm_fetch_and_add";
+                case kind::COMM_TRYLOCK:            return "comm_trylock";
+                case kind::COMM_LOCK:               return "comm_lock";
+                case kind::COMM_UNLOCK:             return "comm_unlock";
+                case kind::COMM_POLL:               return "comm_poll";
+                case kind::COMM_MALLOC:             return "comm_malloc";
+                case kind::COMM_FREE:               return "comm_free";
 
-                default:                         return "other";
+                default:                            return "other";
             }
         }
 
@@ -187,9 +185,8 @@ namespace madi {
             print_kind_stat_<kind::DIST_SPINLOCK_LOCK>(rank);
             print_kind_stat_<kind::DIST_SPINLOCK_UNLOCK>(rank);
 
-            print_kind_stat_<kind::WORKER_RESUME_LWT>(rank);
-            print_kind_stat_<kind::WORKER_RESUME_HWT>(rank);
-            print_kind_stat_<kind::WORKER_RESUME_REMOTE>(rank);
+            print_kind_stat_<kind::WORKER_RESUME_SUSPENDED>(rank);
+            print_kind_stat_<kind::WORKER_RESUME_STOLEN>(rank);
             print_kind_stat_<kind::WORKER_TRY_STEAL>(rank);
 
             print_kind_stat_<kind::COMM_PUT>(rank);

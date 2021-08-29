@@ -57,9 +57,9 @@ namespace madi {
         template <class F, class... Args>
         friend void worker_do_start(context *ctx, void *arg0, void *arg1);
 
-        friend void madi_worker_do_resume_remote(void *p0, void *p1, 
+        friend void madi_worker_do_resume_remote(void *p0, void *p1,
                                                  void *p2, void *p3);
-        friend void resume_remote_context(saved_context *sctx, 
+        friend void resume_remote_context(saved_context *sctx,
                                           std::tuple<taskq_entry *,
                                           uth_pid_t, taskque *, tsc_t> *arg);
         friend void resume_remote_context_by_messages(saved_context *sctx,
@@ -79,10 +79,9 @@ namespace madi {
 
         future_pool fpool_;
 
-        context *main_ctx_;
-        std::deque<saved_context *> waitq_;
-        
-        bool done_;
+        saved_context *main_sctx_;
+
+        dist_pool<saved_context*> *suspended_retpools_;
 
         logger::begin_data bd_resume_;
 
@@ -111,11 +110,14 @@ namespace madi {
 
         void resume(saved_context *next_sctx);
 
+        void resume_remote_suspended(suspended_entry se);
+
         void do_scheduler_work();
+
+        void resume_main_task();
 
         future_pool& fpool() { return fpool_; }
         taskque& taskq() { return *taskq_; }
-        std::deque<saved_context *>& waitq() { return waitq_; }
 
         size_t max_stack_usage() const { return max_stack_usage_; }
 
@@ -134,9 +136,11 @@ namespace madi {
         { return reinterpret_cast<T *>(wls_); }
 
         logger::begin_data get_logger_begin_data() const { return bd_resume_; }
+        void set_logger_begin_data(logger::begin_data bd) { bd_resume_ = bd; }
+
+        bool is_main_task() { return is_main_task_; }
 
     private:
-        void go();
         static void do_resume(worker& w, const taskq_entry& entry,
                               uth_pid_t victim);
         bool steal_with_lock(taskq_entry *entry,
@@ -145,9 +149,10 @@ namespace madi {
         bool steal();
         bool steal_by_rdmas();
         bool steal_by_messages();
-        bool is_main_task();
+
+        saved_context* alloc_suspended(size_t size);
     };
-    
+
 }
 
 #endif

@@ -2,6 +2,7 @@
 #define MADI_FUTURE_H
 
 #include "madi.h"
+#include "uth/uni/taskq.h"
 
 namespace madi {
 
@@ -31,12 +32,10 @@ namespace uth {
 
         void set(T& value);
 
-        bool try_get(T *value);
         T get();
 
     private:
         future(int id, madi::uth_pid_t pid);
-        bool try_get(madi::worker& w, T *value);
     };
 }
 }
@@ -47,6 +46,11 @@ namespace uth {
 #include "uth_comm.h"
 
 namespace madi {
+    struct suspended_entry {
+        uth_pid_t pid;
+        uint8_t *base;
+        size_t size;
+    };
 
     class dist_spinlock {
         uth_comm& c_;
@@ -94,7 +98,8 @@ namespace madi {
         template <class T>
         struct entry {
             T value;
-            int done;
+            int resume_flag;
+            suspended_entry s_entry;
         };
 
         int ptr_;
@@ -109,6 +114,8 @@ namespace madi {
         };
 
         dist_pool<retpool_entry> *retpools_;
+
+        logger::begin_data sync_bd_;
     public:
         future_pool();
         ~future_pool();
@@ -120,16 +127,26 @@ namespace madi {
         madm::uth::future<T> get();
 
         template <class T>
-        void fill(madm::uth::future<T> f, T& value);
+        bool fill(madm::uth::future<T> f, T& value, bool pop_succeed,
+                  suspended_entry *se);
 
         template <class T>
-        bool synchronize(madm::uth::future<T> f, T *value);
+        bool sync(madm::uth::future<T> f, T *value);
+
+        template <class T>
+        bool sync_suspended(madm::uth::future<T> f, suspended_entry se);
+
+        template <class T>
+        void sync_resume(madm::uth::future<T> f, T *value);
 
     private:
         template <class T>
         void reset(int id);
 
         void move_back_returned_ids();
+
+        template <class T>
+        void return_future_id(madm::uth::future<T> f);
     };
 
 }

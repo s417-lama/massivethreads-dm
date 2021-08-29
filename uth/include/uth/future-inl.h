@@ -51,25 +51,59 @@ namespace uth {
             MADI_DIE("invalid future");
 
         madi::worker& w = madi::current_worker();
-        w.fpool().fill(*this, value);
+        madi::uth_comm& c = madi::proc().com();
+
+        // pop the parent thread
+        madi::taskq_entry *entry = w.taskq().pop(c);
+        bool pop_succeed = entry != NULL;
+
+        madi::suspended_entry se;
+        bool resume_parent = w.fpool().fill(*this, value, pop_succeed, &se);
+
+        if (pop_succeed) {
+            // the entry is not stolen
+            MADI_DPUTS3("pop context %p", &entry->ctx);
+        } else {
+            // the parent thread is main or stolen
+
+            // call an event handler when parent thread is stolen
+            madi::proc().call_parent_is_stolen();
+
+            if (resume_parent) {
+                w.resume_remote_suspended(se);
+            } else {
+                // TODO: consider what to do with TLS
+                /* w.tls_ = NULL; */
+
+                // move to the scheduler
+                w.resume_main_task();
+            }
+
+            MADI_NOT_REACHED;
+        }
     }
 
     template <class T>
-    inline bool future<T>::try_get(T *value)
+    static void future_join_suspended(madi::saved_context *sctx, future<T> f)
     {
         madi::worker& w = madi::current_worker();
-        return try_get(w, value);
-    }
+        madi::uth_comm& c = madi::proc().com();
+        madi::uth_pid_t me = c.get_pid();
 
-    template <class T>
-    inline bool future<T>::try_get(madi::worker& w, T *value)
-    {
-        if (id_ < 0 || pid_ == madi::PID_INVALID)
-            MADI_DIE("invalid future");
+        madi::suspended_entry se;
+        se.pid  = me;
+        se.base = (uint8_t *)sctx;
+        se.size = offsetof(madi::saved_context, partial_stack) + sctx->stack_size;
 
-        madi::future_pool& pool = w.fpool();
+        if (w.fpool().sync_suspended(f, se)) {
+            // return to the suspended thread again
+            w.resume(sctx);
+        } else {
+            // move to the scheduler
+            w.resume_main_task();
+        }
 
-        return pool.synchronize(*this, value);
+        MADI_NOT_REACHED;
     }
 
     template <class T>
@@ -80,8 +114,20 @@ namespace uth {
         madi::worker& w = madi::current_worker();
 
         T value;
-        while (!try_get(w, &value))
-            w.do_scheduler_work();
+        if (w.is_main_task()) {
+            while (!w.fpool().sync(*this, &value)) {
+                w.do_scheduler_work();
+            }
+        } else {
+            if (!w.fpool().sync(*this, &value)) {
+                w.suspend(future_join_suspended<T>, *this);
+
+                // worker can change after suspend
+                madi::worker& w1 = madi::current_worker();
+
+                w1.fpool().sync_resume(*this, &value);
+            }
+        }
 
         madi::logger::checkpoint<madi::logger::kind::SCHED>();
 
@@ -353,7 +399,7 @@ namespace madi {
 
         entry<T> *e = (entry<T> *)(remote_bufs_[me] + id);
 
-        e->done = 0;
+        e->resume_flag = 0;
     }
 
     inline void future_pool::move_back_returned_ids()
@@ -414,7 +460,8 @@ namespace madi {
     }
 
     template <class T>
-    inline void future_pool::fill(madm::uth::future<T> f, T& value)
+    inline bool future_pool::fill(madm::uth::future<T> f, T& value, bool pop_succeed,
+                                  suspended_entry *se)
     {
         logger::begin_data bd = logger::begin_event<logger::kind::FUTURE_POOL_FILL>();
 
@@ -425,23 +472,69 @@ namespace madi {
 
         entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
 
-        if (pid == me) {
+        bool ret = false;
+        if (pop_succeed) {
+            // fast path
+            MADI_ASSERT(pid == me);
+
             e->value = value;
-            comm::threadsafe::wbarrier();
-            e->done = 1;
+            e->resume_flag = 1;
         } else {
-            // value is on a stack registered for RDMA
-            c.put_buffered(&e->value, &value, sizeof(value), pid);
-            c.put_value(&e->done, 1, pid);
+            if (pid == me) {
+                e->value = value;
+            } else {
+                // value is on a stack registered for RDMA
+                c.put_buffered(&e->value, &value, sizeof(value), pid);
+            }
+
+            if (c.fetch_and_add(&e->resume_flag, 1, pid) == 0) {
+                // the parent has not reached the join point
+            } else {
+                // the parent has already reached the join point and suspended
+                ret = true;
+
+                if (pid == me) {
+                    *se = e->s_entry;
+                } else {
+                    c.get_buffered(se, &e->s_entry, sizeof(suspended_entry), pid);
+                }
+            }
         }
 
         logger::end_event<logger::kind::FUTURE_POOL_FILL>(bd, pid);
+
+        return ret;
     }
 
     template <class T>
-    inline bool future_pool::synchronize(madm::uth::future<T> f, T *value)
+    inline void future_pool::return_future_id(madm::uth::future<T> f)
     {
-        logger::begin_data bd = logger::begin_event<logger::kind::FUTURE_POOL_SYNC>();
+        uth_comm& c = madi::proc().com();
+        uth_pid_t me = c.get_pid();
+        int fid = f.id_;
+        uth_pid_t pid = f.pid_;
+
+        if (pid == me) {
+            size_t idx = index_of_size(sizeof(entry<T>));
+            id_pools_[idx].push_back(fid);
+        } else {
+            // return fork-join descriptor to processor pid.
+            retpool_entry rpentry = { fid, (int)sizeof(entry<T>) };
+            bool success = retpools_->push_remote(rpentry, pid);
+
+            if (success) {
+                MADI_DPUTSR1("push future %d to return pool(%zu)",
+                            fid, pid);
+            } else {
+                madi::die("future return pool becomes full");
+            }
+        }
+    }
+
+    template <class T>
+    inline bool future_pool::sync(madm::uth::future<T> f, T *value)
+    {
+        sync_bd_ = logger::begin_event<logger::kind::FUTURE_POOL_SYNC>();
 
         uth_comm& c = madi::proc().com();
         uth_pid_t me = c.get_pid();
@@ -452,47 +545,82 @@ namespace madi {
 
         entry<T> entry_buf;
         if (pid != me) {
-#if 1
-            // Is this safe in terms of memory ordering???
             c.get(&entry_buf, e, sizeof(entry<T>), pid);
-#else
-            entry_buf.done = c.get_value(&e->done, pid);
-
-            if (entry_buf.done == 1) {
-                // entry_buf is on a stack registered for RDMA
-                c.get_buffered(&entry_buf.value, &e->value,
-                               sizeof(e->value), pid);
-            }
-#endif
             e = &entry_buf;
         }
 
         MADI_ASSERT(0 <= fid && fid < buf_size_);
 
-        if (e->done) {
-            if (pid == me) {
-                size_t idx = index_of_size(sizeof(entry<T>));
-                id_pools_[idx].push_back(fid);
-            } else {
-                // return fork-join descriptor to processor pid.
-                retpool_entry rpentry = { fid, (int)sizeof(entry<T>) };
-                bool success = retpools_->push_remote(rpentry, pid);
+        if (e->resume_flag > 0) {
+            // The target thread has already been completed
 
-                if (success) {
-                    MADI_DPUTSR1("push future %d to return pool(%zu)",
-                                fid, pid);
-                } else {
-                    madi::die("future return pool becomes full");
-                }
-            }
- 
+            return_future_id(f);
+
             comm::threadsafe::rbarrier();
             *value = e->value;
+
+            logger::end_event<logger::kind::FUTURE_POOL_SYNC>(sync_bd_, pid);
+
+            return true;
+        } else {
+            // The target thread can be still running, so suspend the current
+            // thread and try to acquire resume_flag later
+            return false;
+        }
+    }
+
+    template <class T>
+    inline bool future_pool::sync_suspended(madm::uth::future<T> f, suspended_entry se)
+    {
+        uth_comm& c = madi::proc().com();
+        uth_pid_t me = c.get_pid();
+        int fid = f.id_;
+        uth_pid_t pid = f.pid_;
+
+        entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
+
+        // This write should be done before fetch_and_add so that the target
+        // can see this write after fetch_and_add by the target
+        if (pid == me) {
+            e->s_entry = se;
+        } else {
+            c.put_buffered(&e->s_entry, &se, sizeof(suspended_entry), pid);
         }
 
-        logger::end_event<logger::kind::FUTURE_POOL_SYNC>(bd, pid);
+        bool ret;
+        if (c.fetch_and_add(&e->resume_flag, 1, pid) == 0) {
+            // the target thread is still running, so let the thread resume
+            // the current thread when completed
 
-        return e->done;
+            ret = false;
+        } else {
+            // the target thread has already been completed
+
+            ret = true;
+        }
+
+        logger::end_event<logger::kind::FUTURE_POOL_SYNC>(sync_bd_, pid);
+
+        return ret;
+    }
+
+    template <class T>
+    inline void future_pool::sync_resume(madm::uth::future<T> f, T *value)
+    {
+        uth_comm& c = madi::proc().com();
+        uth_pid_t me = c.get_pid();
+        int fid = f.id_;
+        uth_pid_t pid = f.pid_;
+
+        entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
+
+        return_future_id(f);
+
+        if (pid == me) {
+            *value = e->value;
+        } else {
+            c.get_buffered(value, &e->value, sizeof(T), pid);
+        }
     }
 }
 

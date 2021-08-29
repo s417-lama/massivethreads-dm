@@ -46,9 +46,7 @@ worker::worker() :
     is_main_task_(false),
     taskq_(NULL), taskq_array_(NULL), taskq_entries_array_(NULL),
     fpool_(),
-    main_ctx_(NULL),
-    waitq_(),
-    done_(false)
+    main_sctx_(NULL)
 {
 }
 
@@ -62,9 +60,7 @@ worker::worker(const worker& sched) :
     is_main_task_(false),
     taskq_(), taskq_array_(NULL), taskq_entries_array_(NULL),
     fpool_(),
-    main_ctx_(NULL), 
-    waitq_(),
-    done_(false)
+    main_sctx_(NULL)
 {
 }
 
@@ -109,11 +105,13 @@ void worker::initialize(uth_comm& c)
     taskq_buf_ = taskq_buf;
     taskq_entry_buf_ = taskq_entry_buf;
 
-    MADI_ASSERT(waitq_.size() == 0);
-    waitq_.clear();
-
     size_t future_buf_size = get_env("MADM_FUTURE_POOL_BUF_SIZE", 128 * 1024); // FIXME: does not work with 4MB
     fpool_.initialize(c, future_buf_size);
+
+    int retpool_size = get_env("MADM_SUSPENDED_RETPOOL_SIZE", 16 * 1024);
+    int retpool_local_buf_size = get_env("MADM_SUSPENDED_LOCAL_BUF_SIZE", 3);
+    suspended_retpools_ = new dist_pool<saved_context*>(c, retpool_size,
+                                                        retpool_local_buf_size);
 }
 
 void worker::finalize(uth_comm& c)
@@ -131,31 +129,8 @@ void worker::finalize(uth_comm& c)
     taskq_entries_array_ = NULL;
     taskq_buf_ = NULL;
     taskq_entry_buf_ = NULL;
-}
 
-void resume_context(saved_context *sctx, context *ctx)
-{
-    worker& w = madi::current_worker();
-    w.waitq().push_back(sctx);
-
-    logger::end_event<logger::kind::WORKER_RESUME_LWT>(w.get_logger_begin_data());
-
-    MADI_RESUME_CONTEXT(ctx);
-}
-
-void resume_saved_context(saved_context *sctx, saved_context *next_sctx)
-{
-    worker& w = madi::current_worker();
-
-    if (sctx != NULL)
-        w.waitq().push_back(sctx);
-
-    MADI_DEBUG3({
-        if (sctx != NULL)
-            memset(sctx->stack_top, 0xFF, sctx->stack_size);
-    });
-
-    w.resume(next_sctx);
+    delete suspended_retpools_;
 }
 
 void worker::do_scheduler_work()
@@ -171,27 +146,7 @@ void worker::do_scheduler_work()
     // work stealing
     bool success = steal();
 
-    if (success) {
-        // do nothing (stolen function is resumed at the steal() function)
-    } else if (!waitq_.empty()) {
-        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_HWT>();
-
-        main_ctx_ = NULL;
-
-        // switch to a waiting task
-        MADI_DPUTSB2("resuming a waiting task");
-        saved_context *sctx = waitq_.front();
-        waitq_.pop_front();
-        suspend(resume_saved_context, sctx);
-    } else {
-        // do nothing
-        MADI_DPUTS2("nothing to do");
-    }
-}
-
-void worker::notify_done()
-{
-    done_ = true;
+    // do nothing (stolen function is resumed at the steal() function)
 }
 
 }
@@ -223,7 +178,7 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
     size_t frame_size = sctx->stack_size;
 
     memcpy(frame_base, sctx->partial_stack, frame_size);
-   
+
     MADI_CONTEXT_PRINT(2, ctx);
     if (!sctx->is_main_task)
         MADI_CONTEXT_ASSERT(ctx);
@@ -238,8 +193,11 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
                  frame_base, frame_base + frame_size, frame_size);
 
-    logger::end_event<logger::kind::WORKER_RESUME_HWT>(
-            madi::current_worker().get_logger_begin_data());
+    worker& w = madi::current_worker();
+    if (w.get_logger_begin_data() != NULL) {
+        logger::end_event<logger::kind::WORKER_RESUME_SUSPENDED>(w.get_logger_begin_data());
+        w.set_logger_begin_data(NULL);
+    }
 
     madi_resume_context(ctx);
 }
@@ -287,7 +245,7 @@ void madi_worker_do_resume_remote_context_1(uth_comm& c,
     MADI_DPUTSR1("resuming  [%p, %p) (size = %zu) (stolen)",
                  frame_base, frame_base + frame_size, frame_size);
 
-    logger::end_event<logger::kind::WORKER_RESUME_REMOTE>(
+    logger::end_event<logger::kind::WORKER_RESUME_STOLEN>(
             madi::current_worker().get_logger_begin_data(), victim);
 
     // resume the context of the stolen thread
@@ -301,11 +259,8 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
     // data pointed from the parameter pointers may be corrupted
     // by stack copy, so we have to copy it to the current stack frame.
 
-    MADI_UNUSED saved_context *prev_sctx;
-    MADI_DEBUG3( prev_sctx = (saved_context *)p0 );
-
     std::tuple<taskq_entry *, uth_pid_t, taskque *, tsc_t>& arg =
-        *(std::tuple<taskq_entry *, uth_pid_t, taskque *, tsc_t> *)p1;
+        *(std::tuple<taskq_entry *, uth_pid_t, taskque *, tsc_t> *)p0;
 
     taskq_entry entry = *std::get<0>(arg);
     uth_pid_t victim = std::get<1>(arg);
@@ -323,10 +278,6 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
                  frame_base, (uint8_t *)frame_base + frame_size,
                  frame_size);
     MADI_TENTRY_PRINT(2, &entry);
-
-    MADI_DEBUG3({
-        memset(prev_sctx->stack_top, 1, prev_sctx->stack_size);
-    });
 
     // alignment for RDMA operations
     frame_base = (uint8_t *)((uintptr_t)frame_base & ~0x3);
@@ -378,10 +329,7 @@ void madi_worker_do_resume_remote_context_by_messages(
     // data pointed from the parameter pointers may be corrupted
     // by stack copy, so we have to copy it to the current stack frame.
 
-    MADI_UNUSED saved_context *prev_sctx;
-    MADI_DEBUG3( prev_sctx = (saved_context *)p0 );
-
-    steal_rep *rep = (steal_rep *)p1;
+    steal_rep *rep = (steal_rep *)p0;
     taskq_entry& entry = rep->entry;
     char *frames       = rep->frames;
 
@@ -394,10 +342,6 @@ void madi_worker_do_resume_remote_context_by_messages(
                  frame_base, (uint8_t *)frame_base + frame_size,
                  frame_size);
     MADI_TENTRY_PRINT(2, &entry);
-
-    MADI_DEBUG3({
-           memset(prev_sctx->stack_top, 1, prev_sctx->stack_size);
-    });
 
     // frame copy
     memcpy(frame_base, frames, frame_size);
@@ -440,7 +384,7 @@ bool worker::steal_with_lock(taskq_entry *entry,
 
     taskq_entry *entries = taskq_entries_array_[target];
     taskque *taskq = taskq_array_[target];
-    
+
     if (uth_options.aborting_steal) {
 #if MADI_ENABLE_STEAL_PROF
         long t0 = rdtsc();
@@ -510,7 +454,7 @@ bool worker::steal_with_lock(taskq_entry *entry,
 }
 
 
-void resume_remote_context(saved_context *sctx, 
+void resume_remote_context(saved_context *sctx,
                            std::tuple<taskq_entry *, uth_pid_t,
                                       taskque *, tsc_t> *arg)
 {
@@ -526,15 +470,14 @@ void resume_remote_context(saved_context *sctx,
 
     worker& w = madi::current_worker();
 
-    MADI_ASSERT(sctx != NULL);
-
-    w.waitq().push_back(sctx);
+    // steal should occur only on the main thread
+    MADI_ASSERT(w.is_main_task_);
 
     w.is_main_task_ = false;
 
     uint8_t *next_stack_top = (uint8_t *)entry->frame_base;
     MADI_EXECUTE_ON_STACK(madi_worker_do_resume_remote_context,
-                          sctx, arg, NULL, NULL,
+                          arg, NULL, NULL, NULL,
                           next_stack_top);
 }
 
@@ -559,9 +502,7 @@ bool worker::steal_by_rdmas()
     }
 
     if (success) {
-        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_REMOTE>();
-
-        main_ctx_ = NULL;
+        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_STOLEN>();
 
         // switch to the stolen task
         MADI_DPUTSB2("resuming a stolen task");
@@ -580,7 +521,6 @@ bool worker::steal_by_rdmas()
 
     return success;
 }
-
 
 void handle_steal_reply(int tag, int pid, void *p, size_t size, aminfo *info)
 {
@@ -660,7 +600,7 @@ void resume_remote_context_by_messages(saved_context *sctx,
 
     MADI_ASSERT(sctx != NULL);
 
-    w.waitq().push_back(sctx);
+    /* w.waitq().push_back(sctx); */
 
     w.is_main_task_ = false;
 
@@ -708,4 +648,3 @@ bool worker::steal()
 }
 
 }
-
