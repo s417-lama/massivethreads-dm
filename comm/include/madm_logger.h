@@ -71,6 +71,8 @@ namespace madi {
         uint64_t stat_acc_[(size_t)kind::__N_KINDS];
         uint64_t stat_acc_total_[(size_t)kind::__N_KINDS];
 
+        bool output_trace;
+
         static inline logger& get_instance_() {
             static logger my_instance;
             return my_instance;
@@ -216,7 +218,9 @@ namespace madi {
 
             acc_stat_<k>(t0, t1);
 
-            fprintf(stream, "%d,%lu,%d,%lu,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name_(k));
+            if (lgr.output_trace) {
+                fprintf(stream, "%d,%lu,%d,%lu,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name_(k));
+            }
             return buf1;
         }
 
@@ -232,9 +236,11 @@ namespace madi {
 
             acc_stat_<k>(t0, t1);
 
-            std::stringstream ss;
-            ss << m;
-            fprintf(stream, "%d,%lu,%d,%lu,%s,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name_(k), ss.str().c_str());
+            if (lgr.output_trace) {
+                std::stringstream ss;
+                ss << m;
+                fprintf(stream, "%d,%lu,%d,%lu,%s,%s\n", lgr.rank_, t0, lgr.rank_, t1, kind_name_(k), ss.str().c_str());
+            }
             return buf1;
         }
 
@@ -248,12 +254,15 @@ namespace madi {
             lgr.nproc_ = nproc;
 
             lgr.stat_print_per_rank_ = get_env("MADM_LOGGER_PRINT_STAT_PER_RANK", false);
+            lgr.output_trace         = get_env("MADM_LOGGER_OUTPUT_TRACE", true);
 
             mlog_init(&lgr.md_, 1, size);
 
-            char filename[128];
-            sprintf(filename, "madm_log_%d.ignore", rank);
-            lgr.stream_ = fopen(filename, "w+");
+            if (lgr.output_trace) {
+                char filename[128];
+                sprintf(filename, "madm_log_%d.ignore", rank);
+                lgr.stream_ = fopen(filename, "w+");
+            }
         }
 
         static void flush() {
