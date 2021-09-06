@@ -24,21 +24,11 @@ namespace madi {
             if (base_ == 0)
                 madi::die("task queue overflow");
 
-            int offset_x2 = n_entries_ - (base_ + top_);
-            int offset = offset_x2 / 2;
+            size_t size = sizeof(taskq_entry) * (top_ - base_);
+            memmove(&entries_[0], &entries_[base_], size);
 
-            if (offset_x2 % 2)
-                offset -= 1;
-
-            if (top_ - base_) {
-                int dst = base_ + offset;
-                int src = base_;
-                size_t size = sizeof(taskq_entry) * (top_ - base_);
-                memmove(&entries_[dst], &entries_[src], size);
-            }
-
-            top_ += offset;
-            base_ += offset;
+            top_ -= base_;
+            base_ = 0;
 
             t = top_;
 
@@ -83,12 +73,12 @@ namespace madi {
                 result = &entries_[t];
             } else if (b == t) {
                 result = &entries_[t];
-                top_ = n_entries_ / 2;
-                base_ = top_;
+                top_ = 0;
+                base_ = 0;
             } else {
                 result = NULL;
-                top_ = n_entries_ / 2;
-                base_ = top_;
+                top_ = 0;
+                base_ = 0;
             }
 
             c.unlock(&lock_, me);

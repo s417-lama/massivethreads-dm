@@ -20,8 +20,8 @@ void global_taskque::initialize(uth_comm& c, taskq_entry *entries,
     MADI_CHECK(n_entries <= INT_MAX);
     MADI_CHECK(entries != NULL);
 
-    base_ = (int)n_entries / 2;
-    top_ = base_;
+    base_ = 0;
+    top_ = 0;
     n_entries_ = (int)n_entries;
     entries_ = entries;
 
