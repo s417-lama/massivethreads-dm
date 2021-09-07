@@ -51,6 +51,8 @@ namespace madi {
 
         uth_comm::lock_t lock_;
 
+        bool local_empty_;
+
     public:
         global_taskque();
         ~global_taskque();

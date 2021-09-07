@@ -13,6 +13,8 @@ namespace madi {
     {
         logger::begin_data bd = logger::begin_event<logger::kind::TASKQ_PUSH>();
 
+        local_empty_ = false;
+
         int t = top_;
 
         comm::threadsafe::rbarrier();
@@ -48,6 +50,10 @@ namespace madi {
 
     inline taskq_entry * global_taskque::pop(uth_comm& c)
     {
+        if (local_empty_) {
+            return NULL;
+        }
+
         logger::begin_data bd = logger::begin_event<logger::kind::TASKQ_POP>();
 
         taskq_entry *result;
@@ -75,10 +81,12 @@ namespace madi {
                 result = &entries_[t];
                 top_ = 0;
                 base_ = 0;
+                local_empty_ = true;
             } else {
                 result = NULL;
                 top_ = 0;
                 base_ = 0;
+                local_empty_ = true;
             }
 
             c.unlock(&lock_, me);

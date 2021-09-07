@@ -24,6 +24,7 @@ void global_taskque::initialize(uth_comm& c, taskq_entry *entries,
     top_ = 0;
     n_entries_ = (int)n_entries;
     entries_ = entries;
+    local_empty_ = true;
 
     c.lock_init(&lock_);
 }

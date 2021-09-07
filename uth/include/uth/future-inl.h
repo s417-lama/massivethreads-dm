@@ -171,38 +171,9 @@ namespace madi {
     {
         logger::begin_data bd = logger::begin_event<logger::kind::DIST_SPINLOCK_LOCK>();
 
-        const long backoff_base = 4 * 1e6;
-        const long backoff_max  = 32 * 1e6;
-
-        long t_backoff = backoff_base;
-
-        long t0 = rdtsc();
-        long t_start = t0;
-
         while (!trylock(target)) {
-
-#if 0
-            long rand_t_backoff = (long)((double)t_backoff * random_double());
-
-            while (rdtsc() - t_start <= rand_t_backoff)
-                MADI_UTH_COMM_POLL();
-
-            if (t_backoff * 2 <= backoff_max)
-                t_backoff *= 2;
-
-            t_start = rdtsc();
-#else
             MADI_UTH_COMM_POLL();
-#endif
-
-#if 0
-            if (rdtsc() - t0 >= 1e9)
-                MADI_DIE("BUG: cannot acquire remote spinlock");
-#endif
         }
-
-        long t1 = rdtsc();
-        g_prof->t_dist_lock += t1 - t0;
 
         logger::end_event<logger::kind::DIST_SPINLOCK_LOCK>(bd, target);
     }
