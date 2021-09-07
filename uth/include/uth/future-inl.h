@@ -345,6 +345,9 @@ namespace madi {
         remote_bufs_ = (uint8_t **)c.malloc_shared(buf_size);
         retpools_ = new dist_pool<retpool_entry>(c, retpool_size,
                 retpool_local_buf_size);
+
+        size_t max_value_size = 1 << MAX_ENTRY_BITS;
+        forward_buf_ = (uint8_t *)malloc(max_value_size);
     }
 
     inline void future_pool::finalize(uth_comm& c)
@@ -360,6 +363,8 @@ namespace madi {
         buf_size_ = 0;
         remote_bufs_ = NULL;
         retpools_ = NULL;
+
+        free(forward_buf_);
     }
 
     template <class T>
@@ -469,6 +474,10 @@ namespace madi {
                 } else {
                     c.get_buffered(se, &e->s_entry, sizeof(suspended_entry), pid);
                 }
+
+                // Since this worker resumes the parent, the return value does not
+                // have to be returned via the future entry (forwarding is possible).
+                *((T*)forward_buf_) = value;
             }
         }
 
@@ -578,20 +587,10 @@ namespace madi {
     template <class T>
     inline void future_pool::sync_resume(madm::uth::future<T> f, T *value)
     {
-        uth_comm& c = madi::proc().com();
-        uth_pid_t me = c.get_pid();
-        int fid = f.id_;
-        uth_pid_t pid = f.pid_;
-
-        entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
-
         return_future_id(f);
 
-        if (pid == me) {
-            *value = e->value;
-        } else {
-            c.get_buffered(value, &e->value, sizeof(T), pid);
-        }
+        // forwarding
+        *value = *((T*)forward_buf_);
     }
 }
 
