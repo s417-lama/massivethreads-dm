@@ -65,9 +65,10 @@ namespace madi {
         begin_data bp_ = nullptr;
         FILE* stream_;
 
+        uint64_t t_begin_;
+        uint64_t t_end_;
+
         bool     stat_print_per_rank_;
-        uint64_t stat_t_begin_;
-        uint64_t stat_t_end_;
         uint64_t stat_acc_[(size_t)kind::__N_KINDS];
         uint64_t stat_acc_total_[(size_t)kind::__N_KINDS];
 
@@ -145,12 +146,12 @@ namespace madi {
                 logger& lgr = get_instance_();
                 if (lgr.stat_print_per_rank_) {
                     uint64_t acc = lgr.stat_acc_[(size_t)k];
-                    uint64_t acc_total = lgr.stat_t_end_ - lgr.stat_t_begin_;
+                    uint64_t acc_total = lgr.t_end_ - lgr.t_begin_;
                     printf("(Rank %3d) %25s: %10.6f %% ( %15ld ns / %15ld ns )\n",
                            rank, kind_name_(k), (double)acc / acc_total * 100, acc, acc_total);
                 } else {
                     uint64_t acc = lgr.stat_acc_total_[(size_t)k];
-                    uint64_t acc_total = (lgr.stat_t_end_ - lgr.stat_t_begin_) * lgr.nproc_;
+                    uint64_t acc_total = (lgr.t_end_ - lgr.t_begin_) * lgr.nproc_;
                     printf("%25s: %10.6f %% ( %15ld ns / %15ld ns )\n",
                            kind_name_(k), (double)acc / acc_total * 100, acc, acc_total);
                 }
@@ -160,8 +161,8 @@ namespace madi {
         template <kind k>
         static void acc_stat_(uint64_t t0, uint64_t t1) {
             logger& lgr = get_instance_();
-            uint64_t t0_ = std::max(t0, lgr.stat_t_begin_);
-            uint64_t t1_ = std::min(t1, lgr.stat_t_end_);
+            uint64_t t0_ = std::max(t0, lgr.t_begin_);
+            uint64_t t1_ = std::min(t1, lgr.t_end_);
             if (t1_ > t0_) {
                 lgr.stat_acc_[(size_t)k] += t1_ - t0_;
             }
@@ -216,6 +217,10 @@ namespace madi {
             uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t) - t_offset;
             uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t) - t_offset;
 
+            if (t1 < lgr.t_begin_ || lgr.t_end_ < t0) {
+                return buf1;
+            }
+
             acc_stat_<k>(t0, t1);
 
             if (lgr.output_trace) {
@@ -233,6 +238,10 @@ namespace madi {
             uint64_t t0 = MLOG_READ_ARG(&buf0, uint64_t) - t_offset;
             uint64_t t1 = MLOG_READ_ARG(&buf1, uint64_t) - t_offset;
             MISC     m  = MLOG_READ_ARG(&buf1, MISC);
+
+            if (t1 < lgr.t_begin_ || lgr.t_end_ < t0) {
+                return buf1;
+            }
 
             acc_stat_<k>(t0, t1);
 
@@ -265,8 +274,11 @@ namespace madi {
             }
         }
 
-        static void flush() {
+        static void flush(uint64_t t_begin, uint64_t t_end) {
             logger& lgr = get_instance_();
+
+            lgr.t_begin_ = t_begin;
+            lgr.t_end_ = t_end;
 
             uint64_t t = 0;
             if (lgr.bp_) {
@@ -284,9 +296,6 @@ namespace madi {
         static void flush_and_print_stat(uint64_t t_begin, uint64_t t_end) {
             logger& lgr = get_instance_();
 
-            lgr.stat_t_begin_ = t_begin;
-            lgr.stat_t_end_ = t_end;
-
             for (size_t k = 0; k < (size_t)kind::__N_KINDS; k++) {
                 lgr.stat_acc_[k] = 0;
                 lgr.stat_acc_total_[k] = 0;
@@ -300,7 +309,7 @@ namespace madi {
                 acc_stat_<kind::THREAD>(t0, t_end);
             }
 
-            flush();
+            flush(t_begin, t_end);
 
             if (lgr.stat_print_per_rank_) {
                 if (lgr.rank_ == 0) {
@@ -380,7 +389,7 @@ namespace madi {
         }
 #else
         static void init(int rank, int nproc) {}
-        static void flush() {}
+        static void flush(uint64_t t_begin, uint64_t t_end) {}
         static void flush_and_print_stat(uint64_t t_begin, uint64_t t_end) {}
         static void warmup() {}
         static void clear() {}
