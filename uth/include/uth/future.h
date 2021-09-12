@@ -115,6 +115,7 @@ namespace madi {
 
         dist_pool<retpool_entry> *retpools_;
 
+        bool forward_ret_;
         uint8_t *forward_buf_;
 
         logger::begin_data sync_bd_;
