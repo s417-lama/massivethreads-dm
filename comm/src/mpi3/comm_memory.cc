@@ -15,16 +15,16 @@ namespace comm {
 #define CMR_BASE_ADDR  (reinterpret_cast<uint8_t *>(0x30000000000))
 
     enum cmr_constants {
-        CMR_MAX_BITS = 30,
+        // Up to 2^30 = 64 MB / process
+        CMR_MAX_BITS = 26,
         CMR_MAX_SIZE = 1UL << CMR_MAX_BITS,
 
-        CMR_PROC_BITS = 10,
+        // Up to 2^14 = 16384 processes
+        CMR_PROC_BITS = 14,
         CMR_PROC_SIZE = 1UL << CMR_PROC_BITS,
 
-        CMR_BASE_BITS = 22, // FIXME: temporal fix //13, // 8192 bytes
-                            // 4MB = 
-                            // serverbuf: 128B * 16 cores * 1K nodes = 2MB
-                            // + a
+        // Initial allocation is 2^25 = 32 MB / process
+        CMR_BASE_BITS = 25,
         CMR_BASE_SIZE = 1UL << CMR_BASE_BITS,
     };
 
@@ -86,7 +86,7 @@ namespace comm {
             // default remote memory region
 
             MADI_ASSERT(memid == -1);
- 
+
             uint8_t *base_addr = base_address(pid);
 
             size_t offset = ptr - base_addr;
@@ -98,9 +98,9 @@ namespace comm {
             } else {
                 size_t bits = 64 - __builtin_clzll(offset);
                 idx = bits - CMR_BASE_BITS;
-                offset2 = offset - (1ULL << (bits - 1));
+                offset2 = offset - (1ULL << (bits - 1)); // FIXME: incorrect
             }
- 
+
             MADI_ASSERTP2(0 <= idx && idx < rdma_idx_, idx, rdma_idx_);
             MADI_ASSERTP1(offset2 <= 32 * 1e9, offset2);
 
@@ -129,7 +129,6 @@ namespace comm {
 
             *target_disp = offset;
             *win = wins_[idx];
-            
         } else {
             // coll_mmap region
             // FIXME: O(n) search
@@ -161,95 +160,6 @@ namespace comm {
         }
     }
 
-//     uint64_t comm_memory::translate(void *p, size_t size, int pid)
-//     {
-//         uint8_t *ptr = (uint8_t *)p;
-//         uint8_t *base_addr = base_address(pid);
-//
-//         size_t offset = ptr - base_addr;
-//
-//         size_t idx, offset2;
-//         if (offset < CMR_MAX_SIZE) {
-//             idx = 0;
-//             offset2 = offset;
-//         } else {
-//             size_t bits = 64 - __builtin_clzll(offset);
-//             idx = bits - CMR_BASE_BITS;
-//             offset2 = offset - (1ULL << (bits - 1));
-//         }
-//
-// #define MADI_SUPPORT_USER_REGIST 1
-// #if !MADI_SUPPORT_USER_REGIST
-//         if (idx < 0 || idx >= rdma_idx_)
-//             MADI_DIE("pointer %p is not registered for RDMA. "
-//                      "use coll_rma_malloc or rma_malloc.", ptr);
-//
-//         MADI_ASSERT(rdma_addrs_[idx] != NULL);
-//         MADI_ASSERT(rdma_addrs_[idx][pid] != 0);
-//
-//         uint64_t addr = rdma_addrs_[idx][pid] + offset2;
-//
-//         return addr;
-// #else
-//         if (region_begin_ <= ptr && ptr + size <= region_end_) {
-//
-//             MADI_ASSERTP2(0 <= idx && idx < rdma_idx_, idx, rdma_idx_);
-//             MADI_ASSERTP1(offset2 <= 32 * 1e9, offset2);
-//
-//             MADI_ASSERT(rdma_addrs_[idx] != NULL);
-//             MADI_ASSERT(rdma_addrs_[idx][pid] != 0);
-//
-//             uint64_t addr = rdma_addrs_[idx][pid] + offset2;
-//             return addr;
-//         } else {
-//             // FIXME: O(n) search
-//
-//             int memid = -1;
-//             for (size_t i = rdma_ids_.from(); i < rdma_ids_.to(); i++) {
-//                 size_t idx = index_of_memid(i);
-//                 uint64_t *raddrs = rdma_addrs_[idx];
-//
-//                 if (raddrs == NULL)
-//                     continue;
-//
-//                 uint8_t *addr = (uint8_t *)raddrs[-3];
-//                 size_t size = (size_t)raddrs[-2];
-//                 int id = (int)raddrs[-1];
-//
-//                 if (addr <= ptr && ptr < addr + size) {
-//                     memid = id;
-//                     break;
-//                 }
-//             }
-//
-//             if (memid == -1) {
-//                 MADI_DIE("pointer %p is not registered for RDMA. "
-//                          "use coll_rma_malloc.", ptr);
-//             }
-//
-//             return translate(p, size, pid, memid);
-//         }
-// #endif
-//     }
-//
-//     uint64_t comm_memory::translate(void *p, size_t size, int pid, int memid)
-//     {
-//         int idx = index_of_memid(memid);
-//         uint64_t *raddrs = rdma_addrs_[idx];
-//
-//         MADI_ASSERT(0 <= idx && idx < rdma_addrs_.size());
-//         MADI_ASSERT(raddrs != NULL);
-//
-//         uint8_t *base_addr = (uint8_t *)raddrs[-3];
-//
-//         size_t offset = (uint8_t *)p - base_addr;
-//         uint64_t addr = raddrs[pid] + offset;
-//
-//         MADI_ASSERT(base_addr != NULL);
-//
-//         return addr;
-//     }
-//
     void * comm_memory::extend_to(size_t size, process_config& config)
     {
         if (size < size_)
@@ -319,15 +229,19 @@ namespace comm {
     {
         int me = config.get_native_pid();
         MPI_Comm comm = config.comm();
-        
+
         size_t idx = rdma_idx_;
+
+        if (idx != 0) {
+            MADI_DIE("FIXME: extend() implementation is incorrect");
+        }
 
         MADI_CHECK(idx <= CMR_MAX_BITS - CMR_BASE_BITS);
 
         int memid = memid_of_index(idx);
 
         size_t base_bits = CMR_BASE_BITS;
-        size_t bits = (idx == 0) ? base_bits : base_bits + idx - 1;
+        size_t bits = (idx == 0) ? base_bits : base_bits + idx;
         size_t size = 1UL << bits;
 
         uint8_t *base_addr = base_address(me) + size_;
@@ -367,19 +281,9 @@ namespace comm {
         int *model;
         MPI_Win_get_attr(win, MPI_WIN_MODEL, &model, &flag);
 
-#if 0
-        if (me == 0) {
-            if (!flag) {
-                printf("MPI_WIN_MODEL: none\n");
-            } else if (*model == MPI_WIN_UNIFIED) {
-                printf("MPI_WIN_MODEL: unified\n");
-            } else if (*model == MPI_WIN_SEPARATE) {
-                printf("MPI_WIN_MODEL: separate\n");
-            } else {
-                printf("MPI_WIN_MODEL: unknown\n");
-            }
+        if (!flag || *model != MPI_WIN_UNIFIED) {
+            MADI_DIE("FIXME: the current implementation assume MPI_WIN_MODEL == MPI_WIN_UNIFIED");
         }
-#endif
 
         int r1 = MPI_Win_lock_all(0, win);
         MADI_CHECK(r1 == MPI_SUCCESS);
