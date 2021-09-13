@@ -3,7 +3,11 @@ set -euo pipefail
 export LC_ALL=C
 export LANG=C
 
-source scripts/envs.bash
+MPI_BUILD=${MPI_BUILD:-ompi5}
+# MPI_BUILD=${MPI_BUILD:-ompi4}
+# MPI_BUILD=${MPI_BUILD:-impi}
+
+MPI_BUILD=$MPI_BUILD source scripts/envs.bash
 
 ISOLA_HOME=${ISOLA_HOME:-${HOME}}
 INSTALL_DIR=${INSTALL_DIR:-${ISOLA_HOME}/opt/massivethreads-dm}

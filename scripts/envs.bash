@@ -20,12 +20,26 @@ if [[ $(hostname) =~ "obcx" ]]; then
 elif [[ $(hostname) =~ "ito" ]] || [[ $(hostname) =~ "sca" ]]; then
   export MACHINE_NAME=ito
 
-  # export PATH=$HOME/opt/openmpi/bin:$PATH
-  # export LD_LIBRARY_PATH=$HOME/opt/openmpi/lib:$LD_LIBRARY_PATH
-  export PATH=$HOME/opt/openmpi5/bin:$PATH
-  export LD_LIBRARY_PATH=$HOME/opt/openmpi5/lib:$LD_LIBRARY_PATH
-
   module load gcc/10.2.0
+
+  case ${MPI_BUILD:-ompi5} in
+    ompi5)
+      export PATH=$HOME/opt/openmpi5/bin:$PATH
+      export LD_LIBRARY_PATH=$HOME/opt/openmpi5/lib:$LD_LIBRARY_PATH
+      ;;
+    ompi4)
+      export PATH=$HOME/opt/openmpi/bin:$PATH
+      export LD_LIBRARY_PATH=$HOME/opt/openmpi/lib:$LD_LIBRARY_PATH
+      ;;
+    impi)
+      export I_MPI_CC=gcc
+      export I_MPI_CXX=g++
+      # module load intel/2020.1
+      set +u
+      source $HOME/intel/oneapi/setvars.sh
+      set -u
+      ;;
+  esac
 
 else
   export MACHINE_NAME=local
