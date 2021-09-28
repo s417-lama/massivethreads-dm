@@ -333,14 +333,21 @@ namespace madi {
 
         ret = (saved_context *)c.malloc_shared_local(size);
         if (ret == NULL) {
-            suspended_retpools_->begin_pop_local();
-
-            saved_context* sctx;
-            while (suspended_retpools_->pop_local(&sctx)) {
-                c.free_shared_local((void*)sctx);
-            }
-
-            suspended_retpools_->end_pop_local();
+            suspended_threads_.erase(
+                std::remove_if(
+                    suspended_threads_.begin(),
+                    suspended_threads_.end(),
+                    [&](saved_context* sctx) {
+                        if (sctx->is_freed) {
+                            c.free_shared_local((void*)sctx);
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    }
+                ),
+                suspended_threads_.end()
+            );
 
             ret = (saved_context *)c.malloc_shared_local(size);
         }
@@ -348,6 +355,9 @@ namespace madi {
         if (ret == NULL) {
             madi::die("Allocation failed because of too small initial memory allocation size");
         }
+
+        ret->is_freed = 0;
+        suspended_threads_.push_back(ret);
 
         return ret;
     }
@@ -443,11 +453,7 @@ namespace madi {
         c.get(sctx, base, size, target);
 
         saved_context *remote_sctx = (saved_context*)base;
-        bool success = suspended_retpools_->push_remote(remote_sctx, target);
-
-        if (!success) {
-            madi::die("suspended return pool becomes full");
-        }
+        c.put_value(&remote_sctx->is_freed, 1, target);
 
         resume(sctx);
     }

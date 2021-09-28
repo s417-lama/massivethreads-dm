@@ -81,7 +81,7 @@ namespace madi {
 
         saved_context *main_sctx_;
 
-        dist_pool<saved_context*> *suspended_retpools_;
+        std::vector<saved_context*> suspended_threads_;
 
         logger::begin_data bd_resume_;
 

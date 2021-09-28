@@ -107,11 +107,6 @@ void worker::initialize(uth_comm& c)
 
     size_t future_buf_size = get_env("MADM_FUTURE_POOL_BUF_SIZE", 128 * 1024); // FIXME: does not work with 4MB
     fpool_.initialize(c, future_buf_size);
-
-    int retpool_size = get_env("MADM_SUSPENDED_RETPOOL_SIZE", 16 * 1024);
-    int retpool_local_buf_size = get_env("MADM_SUSPENDED_LOCAL_BUF_SIZE", 3);
-    suspended_retpools_ = new dist_pool<saved_context*>(c, retpool_size,
-                                                        retpool_local_buf_size);
 }
 
 void worker::finalize(uth_comm& c)
@@ -129,8 +124,6 @@ void worker::finalize(uth_comm& c)
     taskq_entries_array_ = NULL;
     taskq_buf_ = NULL;
     taskq_entry_buf_ = NULL;
-
-    delete suspended_retpools_;
 }
 
 void worker::do_scheduler_work()

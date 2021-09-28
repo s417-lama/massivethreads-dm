@@ -139,195 +139,13 @@ namespace uth {
 
 namespace madi {
 
-    inline dist_spinlock::dist_spinlock(uth_comm& c) :
-        c_(c),
-        locks_(NULL)
-    {
-        uth_pid_t me = c.get_pid();
-
-        locks_ = (uint64_t **)c_.malloc_shared(sizeof(uint64_t));
-        c.lock_init(locks_[me]);
-    }
-
-    inline dist_spinlock::~dist_spinlock()
-    {
-        c_.free_shared((void **)locks_);
-    }
-
-    inline bool dist_spinlock::trylock(uth_pid_t target)
-    {
-        MADI_DPUTSP2("DIST SPIN LOCK");
-
-        uint64_t *lock = locks_[target];
-        return c_.trylock(lock, target);
-    }
-
-    inline double random_double()
-    {
-        return (double)random_int(INT_MAX) / (double)INT_MAX;
-    }
-
-    inline void dist_spinlock::lock(uth_pid_t target)
-    {
-        logger::begin_data bd = logger::begin_event<logger::kind::DIST_SPINLOCK_LOCK>();
-
-        while (!trylock(target)) {
-            MADI_UTH_COMM_POLL();
-        }
-
-        logger::end_event<logger::kind::DIST_SPINLOCK_LOCK>(bd, target);
-    }
-
-    inline void dist_spinlock::unlock(uth_pid_t target)
-    {
-        logger::begin_data bd = logger::begin_event<logger::kind::DIST_SPINLOCK_UNLOCK>();
-
-        MADI_DPUTSP2("DIST SPIN UNLOCK");
-
-        uth_comm::lock_t *lock = locks_[target];
-        c_.unlock(lock, target);
-
-        MADI_DPUTSP2("DIST SPIN UNLOCK DONE");
-
-        logger::end_event<logger::kind::DIST_SPINLOCK_UNLOCK>(bd, target);
-    }
-
-    template <class T>
-    inline dist_pool<T>::dist_pool(uth_comm& c, int size, int local_buf_size) :
-        c_(c),
-        size_(size),
-        locks_(c),
-        idxes_(NULL),
-        data_(NULL),
-        local_buf_size_(local_buf_size)
-    {
-        uth_pid_t me = c.get_pid();
-        size_t nprocs = c.get_n_procs();
-
-        idxes_ = (uth_comm::lock_t **)c_.malloc_shared(sizeof(uth_comm::lock_t));
-        data_ = (T **)c_.malloc_shared(sizeof(T) * size);
-
-        for (size_t i = 0; i < nprocs; i++) {
-            local_buf_.push_back(std::vector<T>());
-        }
-
-        *idxes_[me] = 0UL;
-    }
-
-    template <class T>
-    inline dist_pool<T>::~dist_pool()
-    {
-        c_.free_shared((void **)idxes_);
-        c_.free_shared((void **)data_);
-    }
-
-    template <class T>
-    inline bool dist_pool<T>::empty(uth_pid_t target)
-    {
-        uth_pid_t me = c_.get_pid();
-
-        uint64_t *idx_ptr = idxes_[target];
-
-        uint64_t idx;
-        if (target == me) {
-            idx = *idx_ptr;
-        } else {
-            idx = c_.get_value(idx_ptr, target);
-        }
-
-        MADI_ASSERT(0 <= idx && idx < size_);
-
-        return idx == 0;
-    }
-
-    template <class T>
-    inline bool dist_pool<T>::push_remote(T& v, uth_pid_t target)
-    {
-        logger::begin_data bd = logger::begin_event<logger::kind::DIST_POOL_PUSH>();
-
-        bool success = true;
-
-        local_buf_[target].push_back(v);
-        uint64_t buffered_size = local_buf_[target].size();
-
-        if (buffered_size >= local_buf_size_) {
-            locks_.lock(target);
-
-            MADI_DPUTSP2("PUSH REMOTE IDX INCR");
-
-            uint64_t *idx_ptr = idxes_[target];
-            uint64_t idx = c_.fetch_and_add(idx_ptr, buffered_size, target);
-
-            MADI_ASSERT(0 <= idx && idx < size_);
-
-            if (idx + buffered_size <= size_) {
-                T *buf = data_[target] + idx;
-
-                // v is on a stack registered for RDMA
-                c_.put_buffered(buf, local_buf_[target].data(),
-                                sizeof(T) * buffered_size, target);
-
-                local_buf_[target].clear();
-            } else {
-                // pool becomes full
-                c_.put_value(idx_ptr, idx, target);
-                success = false;
-            }
-
-            locks_.unlock(target);
-        }
-
-        logger::end_event<logger::kind::DIST_POOL_PUSH>(bd, target);
-
-        return success;
-    }
-
-    template <class T>
-    inline void dist_pool<T>::begin_pop_local()
-    {
-        log_bd_ = logger::begin_event<logger::kind::DIST_POOL_POP>();
-
-        uth_pid_t target = c_.get_pid();
-        locks_.lock(target);
-    }
-
-    template <class T>
-    inline void dist_pool<T>::end_pop_local()
-    {
-        uth_pid_t target = c_.get_pid();
-        locks_.unlock(target);
-
-        logger::end_event<logger::kind::DIST_POOL_POP>(log_bd_);
-    }
-
-    template <class T>
-    inline bool dist_pool<T>::pop_local(T *buf)
-    {
-        uth_pid_t target = c_.get_pid();
-
-        uint64_t current_idx = *idxes_[target];
-
-        MADI_ASSERT(0 <= current_idx && current_idx < size_);
-
-        if (current_idx == 0)
-            return false;
-
-        uint64_t idx = current_idx - 1;
-        T *src = data_[target] + idx;
-        memcpy(buf, src, sizeof(T));
-
-        *idxes_[target] -= 1;
-
-        return true;
-    }
-
     inline size_t index_of_size(size_t size)
     {
         return 64UL - static_cast<size_t>(__builtin_clzl(size - 1));
     }
 
     inline future_pool::future_pool() :
-        ptr_(0), buf_size_(0), remote_bufs_(NULL), retpools_(NULL)
+        ptr_(0), buf_size_(0), remote_bufs_(NULL)
     {
     }
     inline future_pool::~future_pool()
@@ -336,15 +154,10 @@ namespace madi {
 
     inline void future_pool::initialize(uth_comm& c, size_t buf_size)
     {
-        int retpool_size = get_env("MADM_FUTURE_POOL_RETPOOL_SIZE", 16 * 1024);
-        int retpool_local_buf_size = get_env("MADM_FUTURE_POOL_LOCAL_BUF_SIZE", 3);
-
         ptr_ = 0;
         buf_size_ = (int)buf_size;
 
         remote_bufs_ = (uint8_t **)c.malloc_shared(buf_size);
-        retpools_ = new dist_pool<retpool_entry>(c, retpool_size,
-                retpool_local_buf_size);
 
         size_t max_value_size = 1 << MAX_ENTRY_BITS;
         forward_buf_ = (uint8_t *)malloc(max_value_size);
@@ -355,15 +168,14 @@ namespace madi {
     {
         c.free_shared((void **)remote_bufs_);
 
-        for (size_t i = 0; i < MAX_ENTRY_BITS; i++)
+        for (size_t i = 0; i < MAX_ENTRY_BITS; i++) {
             id_pools_[i].clear();
-
-        delete retpools_;
+            in_use_id_pools_[i].clear();
+        }
 
         ptr_ = 0;
         buf_size_ = 0;
         remote_bufs_ = NULL;
-        retpools_ = NULL;
 
         free(forward_buf_);
     }
@@ -379,24 +191,6 @@ namespace madi {
         e->resume_flag = 0;
     }
 
-    inline void future_pool::move_back_returned_ids()
-    {
-        retpools_->begin_pop_local();
-
-        size_t count = 0;
-        retpool_entry entry;
-        while (retpools_->pop_local(&entry)) {
-            size_t idx = index_of_size(entry.size);
-            id_pools_[idx].push_back(entry.id);
-
-            count += 1;
-        }
-
-        retpools_->end_pop_local();
-
-        MADI_DPUTSB1("move back returned future ids: %zu", count);
-    }
-
     template <class T>
     inline madm::uth::future<T> future_pool::get()
     {
@@ -409,9 +203,24 @@ namespace madi {
 
         int real_size = 1 << idx;
 
-        // move future ids from the return pool to the local pool
-        if (id_pools_[idx].empty() && !retpools_->empty(me)) {
-            move_back_returned_ids();
+        if (id_pools_[idx].empty()) {
+            // collect freed future ids
+            in_use_id_pools_[idx].erase(
+                std::remove_if(
+                    in_use_id_pools_[idx].begin(),
+                    in_use_id_pools_[idx].end(),
+                    [&](int id) {
+                        entry<T> *e = (entry<T> *)(remote_bufs_[me] + id);
+                        if (e->resume_flag == 2) {
+                            id_pools_[idx].push_back(id);
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    }
+                ),
+                in_use_id_pools_[idx].end()
+            );
         }
 
         int id;
@@ -419,8 +228,6 @@ namespace madi {
             // pop a future id from the local pool
             id = id_pools_[idx].back();
             id_pools_[idx].pop_back();
-
-            reset<T>(id);
         } else if (ptr_ + real_size < buf_size_) {
             // if pool is empty, allocate a future id from ptr_
             id = ptr_;
@@ -429,6 +236,8 @@ namespace madi {
             madi::die("future pool overflow");
         }
 
+        reset<T>(id);
+        in_use_id_pools_[idx].push_back(id);
         madm::uth::future<T> ret = madm::uth::future<T>(id, me);
 
         logger::end_event<logger::kind::FUTURE_POOL_GET>(bd, id);
@@ -499,17 +308,18 @@ namespace madi {
         if (pid == me) {
             size_t idx = index_of_size(sizeof(entry<T>));
             id_pools_[idx].push_back(fid);
+            in_use_id_pools_[idx].erase(
+                std::remove(
+                    in_use_id_pools_[idx].begin(),
+                    in_use_id_pools_[idx].end(),
+                    fid
+                ),
+                in_use_id_pools_[idx].end()
+            );
         } else {
             // return fork-join descriptor to processor pid.
-            retpool_entry rpentry = { fid, (int)sizeof(entry<T>) };
-            bool success = retpools_->push_remote(rpentry, pid);
-
-            if (success) {
-                MADI_DPUTSR1("push future %d to return pool(%zu)",
-                            fid, pid);
-            } else {
-                madi::die("future return pool becomes full");
-            }
+            entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
+            c.put_value(&e->resume_flag, 2, pid);
         }
     }
 

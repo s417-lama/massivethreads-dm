@@ -92,6 +92,7 @@ struct context {
 
 struct saved_context {
     bool is_main_task;
+    int is_freed;
     void *ip;
     void *sp;
     context *ctx;

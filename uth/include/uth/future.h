@@ -52,43 +52,6 @@ namespace madi {
         size_t size;
     };
 
-    class dist_spinlock {
-        uth_comm& c_;
-        uth_comm::lock_t **locks_;
-    public:
-        dist_spinlock(uth_comm& c);
-        ~dist_spinlock();
-
-        bool trylock(uth_pid_t target);
-        void lock(uth_pid_t target);
-        void unlock(uth_pid_t unlock);
-    };
-
-    template <class T>
-    class dist_pool {
-        uth_comm& c_;
-        uint64_t size_;
-        dist_spinlock locks_;
-        uint64_t **idxes_;
-        T **data_;
-
-        uint64_t local_buf_size_;
-        std::vector< std::vector<T> > local_buf_;
-
-        logger::begin_data log_bd_;
-    public:
-        dist_pool(uth_comm& c, int size, int local_buf_size);
-        ~dist_pool();
-
-        bool empty(uth_pid_t target);
-
-        bool push_remote(T& v, uth_pid_t target);
-
-        void begin_pop_local();
-        void end_pop_local();
-        bool pop_local(T *buf);
-    };
-
     class future_pool : noncopyable {
 
         enum constants {
@@ -98,7 +61,7 @@ namespace madi {
         template <class T>
         struct entry {
             T value;
-            int resume_flag;
+            int resume_flag; // 0/1: resume flag, 2: freed
             suspended_entry s_entry;
         };
 
@@ -107,18 +70,11 @@ namespace madi {
         uint8_t **remote_bufs_;
 
         std::vector<int> id_pools_[MAX_ENTRY_BITS];
-
-        struct retpool_entry {
-            int id;
-            int size;
-        };
-
-        dist_pool<retpool_entry> *retpools_;
-
         bool forward_ret_;
         uint8_t *forward_buf_;
 
         logger::begin_data sync_bd_;
+        std::vector<int> in_use_id_pools_[MAX_ENTRY_BITS];
     public:
         future_pool();
         ~future_pool();
@@ -145,8 +101,6 @@ namespace madi {
     private:
         template <class T>
         void reset(int id);
-
-        void move_back_returned_ids();
 
         template <class T>
         void return_future_id(madm::uth::future<T> f);
