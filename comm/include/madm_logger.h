@@ -33,12 +33,6 @@ namespace madi {
             FUTURE_POOL_FILL,
             FUTURE_POOL_GET,
 
-            DIST_POOL_PUSH,
-            DIST_POOL_POP,
-
-            DIST_SPINLOCK_LOCK,
-            DIST_SPINLOCK_UNLOCK,
-
             WORKER_RESUME_SUSPENDED,
             WORKER_RESUME_STOLEN,
             WORKER_TRY_STEAL,
@@ -115,12 +109,6 @@ namespace madi {
                 case kind::FUTURE_POOL_FILL:        return "future_pool_fill";
                 case kind::FUTURE_POOL_GET:         return "future_pool_get";
 
-                case kind::DIST_POOL_PUSH:          return "dist_pool_push";
-                case kind::DIST_POOL_POP:           return "dist_pool_pop";
-
-                case kind::DIST_SPINLOCK_LOCK:      return "dist_spinlock_lock";
-                case kind::DIST_SPINLOCK_UNLOCK:    return "dist_spinlock_unlock";
-
                 case kind::WORKER_RESUME_SUSPENDED: return "worker_resume_suspended";
                 case kind::WORKER_RESUME_STOLEN:    return "worker_resume_stolen";
                 case kind::WORKER_TRY_STEAL:        return "worker_try_steal";
@@ -181,12 +169,6 @@ namespace madi {
             print_kind_stat_<kind::FUTURE_POOL_SYNC>(rank);
             print_kind_stat_<kind::FUTURE_POOL_FILL>(rank);
             print_kind_stat_<kind::FUTURE_POOL_GET>(rank);
-
-            print_kind_stat_<kind::DIST_POOL_PUSH>(rank);
-            print_kind_stat_<kind::DIST_POOL_POP>(rank);
-
-            print_kind_stat_<kind::DIST_SPINLOCK_LOCK>(rank);
-            print_kind_stat_<kind::DIST_SPINLOCK_UNLOCK>(rank);
 
             print_kind_stat_<kind::WORKER_RESUME_SUSPENDED>(rank);
             print_kind_stat_<kind::WORKER_RESUME_STOLEN>(rank);
