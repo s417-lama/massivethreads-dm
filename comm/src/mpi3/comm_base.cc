@@ -86,8 +86,6 @@ namespace comm {
         comm_allocator *alc = comm_alc_;
         void* p = alc->allocate<false>(size, config);
 
-        MADI_ASSERT(p != NULL);
-
         logger::end_event<logger::kind::COMM_MALLOC>(bd);
 
         return p;

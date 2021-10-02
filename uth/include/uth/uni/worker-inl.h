@@ -448,7 +448,7 @@ namespace madi {
         uint8_t *base = se.base;
         size_t size = se.size;
 
-        saved_context *sctx = (saved_context *)c.malloc_shared_local(size);
+        saved_context *sctx = alloc_suspended(size);
 
         c.get(sctx, base, size, target);
 

@@ -136,11 +136,22 @@ namespace comm {
         alc_header *header = (alc_header *)p - 1;
 
         MADI_DPUTS1("deallocate [%p, %p) (size = %ld)",
-                    header, header + header->size, header->size);
+                    header, header + header->size, header->size * sizeof(alc_header));
 
         alc_header *h = free_list_->next;
 
         if (h == NULL) {
+            free_list_->next = header;
+            return;
+        }
+
+        if (header < h) {
+            if (header + header->size == h) {
+                header->size += h->size;
+                header->next = h->next;
+            } else {
+                header->next = h;
+            }
             free_list_->next = header;
             return;
         }
