@@ -335,21 +335,26 @@ namespace madi {
 
         entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
 
-        entry<T> entry_buf;
-        if (pid != me) {
-            c.get(&entry_buf, e, sizeof(entry<T>), pid);
-            e = &entry_buf;
+        int flag;
+        if (pid == me) {
+            flag = e->resume_flag;
+        } else {
+            flag = c.get_value(&e->resume_flag, pid);
         }
 
         MADI_ASSERT(0 <= fid && fid < buf_size_);
 
-        if (e->resume_flag > 0) {
+        if (flag > 0) {
             // The target thread has already been completed
 
-            return_future_id(f);
+            if (pid == me) {
+                comm::threadsafe::rbarrier();
+                *value = e->value;
+            } else {
+                c.get_buffered(value, &e->value, sizeof(T), pid);
+            }
 
-            comm::threadsafe::rbarrier();
-            *value = e->value;
+            return_future_id(f);
 
             logger::end_event<logger::kind::FUTURE_POOL_SYNC>(sync_bd_, pid);
 
