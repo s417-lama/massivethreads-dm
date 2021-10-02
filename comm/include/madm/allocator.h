@@ -79,10 +79,7 @@ namespace comm {
         alc_header *prev = free_list_;
         alc_header *h = prev->next;
         for (;;) {
-            if (h->size >= n_units)
-                break;
-
-            if (h->next == NULL) {
+            if (h == NULL) {
                 if (extend) {
                     size_t prev_size = mr_->size();
 
@@ -108,6 +105,9 @@ namespace comm {
                     return NULL;
                 }
             }
+
+            if (h->size >= n_units)
+                break;
 
             prev = h;
             h = h->next;
