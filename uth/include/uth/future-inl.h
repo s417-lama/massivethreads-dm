@@ -211,7 +211,7 @@ namespace madi {
                     in_use_id_pools_[idx].end(),
                     [&](int id) {
                         entry<T> *e = (entry<T> *)(remote_bufs_[me] + id);
-                        if (e->resume_flag == 2) {
+                        if (e->resume_flag == 3) {
                             id_pools_[idx].push_back(id);
                             return true;
                         } else {
@@ -319,7 +319,7 @@ namespace madi {
         } else {
             // return fork-join descriptor to processor pid.
             entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
-            c.put_value(&e->resume_flag, 2, pid);
+            c.put_value(&e->resume_flag, 3, pid);
         }
     }
 

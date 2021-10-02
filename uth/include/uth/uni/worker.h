@@ -140,6 +140,9 @@ namespace madi {
 
         bool is_main_task() { return is_main_task_; }
 
+        saved_context* alloc_suspended(size_t size);
+        void free_suspended_local(saved_context* sctx);
+
     private:
         static void do_resume(worker& w, const taskq_entry& entry,
                               uth_pid_t victim);
@@ -150,7 +153,7 @@ namespace madi {
         bool steal_by_rdmas();
         bool steal_by_messages();
 
-        saved_context* alloc_suspended(size_t size);
+        void collect_suspended_freed_remotely();
     };
 
 }

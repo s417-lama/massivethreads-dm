@@ -179,14 +179,13 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
     MADI_ASSERT(sctx->ip == ctx->instr_ptr());
     MADI_ASSERT(sctx->sp == ctx->stack_ptr());
 
-    uth_comm& c = madi::proc().com();
+    worker& w = madi::current_worker();
 
-    c.free_shared_local((void *)sctx);
+    w.free_suspended_local(sctx);
 
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
                  frame_base, frame_base + frame_size, frame_size);
 
-    worker& w = madi::current_worker();
     if (w.get_logger_begin_data() != NULL) {
         logger::end_event<logger::kind::WORKER_RESUME_SUSPENDED>(w.get_logger_begin_data());
         w.set_logger_begin_data(NULL);

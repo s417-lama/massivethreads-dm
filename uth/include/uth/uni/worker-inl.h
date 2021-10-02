@@ -326,6 +326,27 @@ namespace madi {
         MADI_NOT_REACHED;
     }
 
+    inline void worker::collect_suspended_freed_remotely()
+    {
+        uth_comm& c = madi::proc().com();
+
+        suspended_threads_.erase(
+            std::remove_if(
+                suspended_threads_.begin(),
+                suspended_threads_.end(),
+                [&](saved_context* sctx) {
+                    if (sctx->is_freed) {
+                        c.free_shared_local((void*)sctx);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            ),
+            suspended_threads_.end()
+        );
+    }
+
     inline saved_context* worker::alloc_suspended(size_t size)
     {
         uth_comm& c = madi::proc().com();
@@ -333,22 +354,7 @@ namespace madi {
 
         ret = (saved_context *)c.malloc_shared_local(size);
         if (ret == NULL) {
-            suspended_threads_.erase(
-                std::remove_if(
-                    suspended_threads_.begin(),
-                    suspended_threads_.end(),
-                    [&](saved_context* sctx) {
-                        if (sctx->is_freed) {
-                            c.free_shared_local((void*)sctx);
-                            return true;
-                        } else {
-                            return false;
-                        }
-                    }
-                ),
-                suspended_threads_.end()
-            );
-
+            collect_suspended_freed_remotely();
             ret = (saved_context *)c.malloc_shared_local(size);
         }
 
@@ -360,6 +366,22 @@ namespace madi {
         suspended_threads_.push_back(ret);
 
         return ret;
+    }
+
+    inline void worker::free_suspended_local(saved_context* sctx)
+    {
+        uth_comm& c = madi::proc().com();
+
+        suspended_threads_.erase(
+            std::remove(
+                suspended_threads_.begin(),
+                suspended_threads_.end(),
+                sctx
+            ),
+            suspended_threads_.end()
+        );
+
+        c.free_shared_local((void *)sctx);
     }
 
 
