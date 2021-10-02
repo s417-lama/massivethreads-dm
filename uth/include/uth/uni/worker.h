@@ -65,6 +65,8 @@ namespace madi {
         friend void resume_remote_context_by_messages(saved_context *sctx,
                                                       steal_rep *rep);
 
+        int freed_val_ = 1;
+
         void *wls_;
         thread_storage_holder *tls_;
         bool is_main_task_;

@@ -92,6 +92,16 @@ namespace madi {
         comm::get(dst, src, size, target);
     }
 
+    void uth_comm::put_nbi(void *dst, void *src, size_t size, uth_pid_t target)
+    {
+        comm::put_nbi(dst, src, size, target);
+    }
+
+    void uth_comm::get_nbi(void *dst, void *src, size_t size, uth_pid_t target)
+    {
+        comm::get_nbi(dst, src, size, target);
+    }
+
     void uth_comm::put_value(int *dst, int value, uth_pid_t target)
     {
         comm::put_value<int>(dst, value, target);

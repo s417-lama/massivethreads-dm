@@ -335,7 +335,7 @@ namespace madi {
                 suspended_threads_.begin(),
                 suspended_threads_.end(),
                 [&](saved_context* sctx) {
-                    if (sctx->is_freed) {
+                    if (sctx->is_freed == freed_val_) {
                         c.free_shared_local((void*)sctx);
                         return true;
                     } else {
@@ -475,7 +475,7 @@ namespace madi {
         c.get(sctx, base, size, target);
 
         saved_context *remote_sctx = (saved_context*)base;
-        c.put_value(&remote_sctx->is_freed, 1, target);
+        c.put_nbi(&remote_sctx->is_freed, &freed_val_, sizeof(remote_sctx->is_freed), target);
 
         resume(sctx);
     }

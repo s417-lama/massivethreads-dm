@@ -52,6 +52,8 @@ namespace madi {
 
         void put(void *dst, void *src, size_t size, uth_pid_t target);
         void get(void *dst, void *src, size_t size, uth_pid_t target);
+        void put_nbi(void *dst, void *src, size_t size, uth_pid_t target);
+        void get_nbi(void *dst, void *src, size_t size, uth_pid_t target);
         void put_buffered(void *dst, void *src, size_t size,
                           uth_pid_t target);
         void get_buffered(void *dst, void *src, size_t size,

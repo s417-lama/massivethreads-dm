@@ -65,6 +65,8 @@ namespace madi {
             suspended_entry s_entry;
         };
 
+        int freed_val_ = 3;
+
         int ptr_;
         int buf_size_;
         uint8_t **remote_bufs_;
