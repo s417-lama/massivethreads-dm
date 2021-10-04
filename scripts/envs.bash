@@ -20,7 +20,9 @@ if [[ $(hostname) =~ "obcx" ]]; then
 elif [[ $(hostname) =~ "ito" ]] || [[ $(hostname) =~ "sca" ]]; then
   export MACHINE_NAME=ito
 
-  module load gcc/10.2.0
+  # module load gcc/10.2.0
+  export PATH=$HOME/opt/gcc/11.2.0/bin:$PATH
+  export LD_LIBRARY_PATH=$HOME/opt/gcc/11.2.0/lib64:$LD_LIBRARY_PATH
 
   case ${MPI_BUILD:-ompi5} in
     ompi5)
