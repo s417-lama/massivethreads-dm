@@ -87,24 +87,11 @@ esac
 
 
 #
-# check if C++11 is supported
-# (necessary for variadic template. the macro below
-# automatically adds -std=gnu++11 or -std=c++11.
+# check if C++14 is supported
+# The macro below automatically adds -std=gnu++14
 #
 
-AX_CXX_COMPILE_STDCXX_0X
-AS_IF([test "$ax_cv_cxx_compile_cxx0x_native" = "yes"], 
-      # compiler support C++0x without any flag
-      [],
-      [AS_IF([test "$ax_cv_cxx_compile_cxx0x_gxx" = "yes"],
-             # compiler support C++0x with -std=gnu++0x
-             [CXXFLAGS="-std=gnu++0x $CXXFLAGS"],
-             [AS_IF([test "$ax_cv_cxx_compile_cxx0x_cxx" = "yes"],
-                    # compiler support C++0x with -std=c++0x
-                    [CXXFLAGS="-std=c++0x $CXXFLAGS"],
-                    [AC_MSG_ERROR([cannot find an option to support C++0x])])])])
-
-#AX_CXX_COMPILE_STDCXX_11([],[mandatory])
+AX_CXX_COMPILE_STDCXX(14, [ext], [mandatory])
 
 
 #

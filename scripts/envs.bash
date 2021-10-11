@@ -25,6 +25,11 @@ elif [[ $(hostname) =~ "ito" ]] || [[ $(hostname) =~ "sca" ]]; then
   export PATH=$HOME/opt/gcc/11.2.0/bin:$PATH
   export LD_LIBRARY_PATH=$HOME/opt/gcc/11.2.0/lib64:$LD_LIBRARY_PATH
 
+  # export PATH=$HOME/opt/clang/13.0.0/bin:$PATH
+  # export LD_LIBRARY_PATH=$HOME/opt/clang/13.0.0/lib:$LD_LIBRARY_PATH
+  # export OMPI_CC=clang
+  # export OMPI_CXX=clang++
+
   case ${MPI_BUILD:-ompi5} in
     ompi5)
       export PATH=$HOME/opt/openmpi5/bin:$PATH
