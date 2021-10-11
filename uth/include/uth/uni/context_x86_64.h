@@ -245,21 +245,6 @@ struct saved_context {
               "cc", "memory");                                          \
     } while (false)
 
-    namespace {
-        // FIXME: quick hack bacause direct use of
-        // MADI_SAVE_CONTEXT_WITH_CALL__ occurs SEGV in optimization build.
-        void MADI_SAVE_CONTEXT_WITH_CALL(context *ctx,
-                                     void (*fp)(context *, void *, void *),
-                                     void *arg0, void *arg1) MADI_NOINLINE MADI_UNUSED;
-
-        void MADI_SAVE_CONTEXT_WITH_CALL(context *ctx,
-                                         void (*fp)(context *, void *, void *),
-                                         void *arg0, void *arg1)
-        {
-            MADI_SAVE_CONTEXT_WITH_CALL__(ctx, fp, arg0, arg1);
-        }
-    }
-
 #define MADI_RESUME_CONTEXT(ctx) \
     do { \
         asm volatile ( \

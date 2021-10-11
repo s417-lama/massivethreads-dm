@@ -342,6 +342,12 @@ void madi_worker_do_resume_remote_context_by_messages(
     madi_worker_do_resume_remote_context_by_messages_1(rep);
 }
 
+void madi_save_context_with_call(context *ctx,
+                                 void (*fp)(context *, void *, void *),
+                                 void *arg0, void *arg1) {
+    MADI_SAVE_CONTEXT_WITH_CALL__(ctx, fp, arg0, arg1);
+}
+
 }
 
 namespace madi {
