@@ -80,7 +80,11 @@
 #elif MADI_ARCH_TYPE == MADI_ARCH_SPARC64
 
 #include "context_sparc64.h"
-     
+
+#elif MADI_ARCH_TYPE == MADI_ARCH_AARCH64
+
+#include "context_aarch64.h"
+
 #endif
 
 #endif

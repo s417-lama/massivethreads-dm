@@ -6,7 +6,8 @@
 
 #include "context_sparc64.S"
 
+#elif MADI_ARCH_TYPE == MADI_ARCH_AARCH64
+
 #else
 #error ""
 #endif
-

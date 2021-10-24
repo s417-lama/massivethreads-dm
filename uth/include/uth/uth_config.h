@@ -12,11 +12,14 @@
 //
 #define MADI_ARCH_X86_64   0
 #define MADI_ARCH_SPARC64  1
+#define MADI_ARCH_AARCH64  2
 
 #ifdef __x86_64__
 #define MADI_ARCH_TYPE     MADI_ARCH_X86_64
 #elif (defined __sparc__) && (defined __arch64__)
 #define MADI_ARCH_TYPE     MADI_ARCH_SPARC64
+#elif defined(__aarch64__)
+#define MADI_ARCH_TYPE     MADI_ARCH_AARCH64
 #else
 #error "This architecture is not supported"
 #endif
@@ -30,7 +33,7 @@
 #if   defined(__linux__)
 #define MADI_OS_TYPE       MADI_OS_LINUX
 #elif defined(__APPLE__)
-#define MADI_OS_TYPE       MADI_OS_DARWIN 
+#define MADI_OS_TYPE       MADI_OS_DARWIN
 #else
 #error "This OS is not supported"
 #endif

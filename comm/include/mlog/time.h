@@ -22,11 +22,11 @@ static inline uint64_t mlog_clock_gettime_in_nsec() {
   return (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
 }
 
-static inline uint64_t mlog_rdtsc() {
-  uint64_t r;
-  __asm__ volatile ("rdtsc; shlq $32, %%rdx; orq %%rdx, %%rax" : "=a"(r) :: "%rdx");
-  return r;
-}
+/* static inline uint64_t mlog_rdtsc() { */
+/*   uint64_t r; */
+/*   __asm__ volatile ("rdtsc; shlq $32, %%rdx; orq %%rdx, %%rax" : "=a"(r) :: "%rdx"); */
+/*   return r; */
+/* } */
 
 #ifdef __cplusplus
 } // extern "C"

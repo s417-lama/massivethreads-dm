@@ -49,6 +49,14 @@ elif [[ $(hostname) =~ "ito" ]] || [[ $(hostname) =~ "sca" ]]; then
       ;;
   esac
 
+elif [[ $(hostname) =~ ^wisteria ]] || [[ $(hostname) =~ ^wo ]]; then
+  export MACHINE_NAME=wisteria
+
+  export PATH=/work/gc64/c64050/.isola/bin:$PATH
+
+  module load odyssey
+  # module load fj/1.2.32
+
 else
   export MACHINE_NAME=local
 
