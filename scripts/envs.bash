@@ -50,7 +50,7 @@ elif [[ $(hostname) =~ "ito" ]] || [[ $(hostname) =~ "sca" ]]; then
   esac
 
 elif [[ $(hostname) =~ ^wisteria ]] || [[ $(hostname) =~ ^wo ]]; then
-  export MACHINE_NAME=wisteria
+  export MACHINE_NAME=wisteria-o
 
   export PATH=/work/gc64/c64050/.isola/bin:$PATH
 

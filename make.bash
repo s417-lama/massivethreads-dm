@@ -21,8 +21,9 @@ enabled_kinds=""
 disabled_kinds=""
 # disabled_kinds="DIST_SPINLOCK_LOCK DIST_SPINLOCK_UNLOCK"
 
-if [[ "$MACHINE_NAME" == wisteria ]]; then
+if [[ "$MACHINE_NAME" == wisteria-o ]]; then
   CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure MPICC=mpifccpx MPICXX=mpiFCCpx --host=aarch64 --with-comm-layer=mpi3 --prefix=${INSTALL_DIR}
+  # CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure MPICC=mpifccpx MPICXX=mpiFCCpx --host=aarch64 --with-comm-layer=mpi3 --enable-logger --with-logger-enabled-kinds="$enabled_kinds" --with-logger-disabled-kinds="$disabled_kinds" --prefix=${INSTALL_DIR}
 
   # debug
   # DEBUG_LEVEL=3
