@@ -8,13 +8,12 @@
 namespace madi {
 
     extern process madi_process;
-    extern /*volatile __thread*/ size_t madi_worker_id;
 
     inline process& proc() { return madi_process; }
 
     inline worker& current_worker()
     {
-        return madi_process.worker_from_id(madi_worker_id);
+        return madi_process.worker_from_id(0);
     }
 
     inline bool initialized() { return madi::proc().initialized(); }

@@ -5,8 +5,6 @@
 namespace madi {
 
     process madi_process;
-    /*volatile __thread*/ size_t madi_worker_id = 0;
-    
     prof *g_prof = NULL;
 
     void exit(int exitcode) {

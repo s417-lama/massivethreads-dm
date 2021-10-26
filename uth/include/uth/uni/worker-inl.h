@@ -239,13 +239,14 @@ namespace madi {
 
             MADI_TENTRY_ASSERT(&entry);
 
-            MADI_CHECK(entry.frame_size < 128 * 1024);
+            MADI_ASSERT(entry.frame_size < 128 * 1024);
 
             w0.taskq_->push(c, entry);
         }
 
         MADI_UTH_COMM_POLL_AT_CRAETE();
 
+#if MADI_ENABLE_STEAL_PROF
         // calculate stack usage for profiling
         {
             uint8_t *stack_top;
@@ -254,6 +255,7 @@ namespace madi {
             size_t stack_usage = w0.stack_bottom_ - stack_top;
             w0.max_stack_usage_ = std::max(w0.max_stack_usage_, stack_usage);
         }
+#endif
 
         // allocate and init thread (task) local storage on the stack
         thread_storage_holder tls(w0.tls_, &ctx);
@@ -275,7 +277,7 @@ namespace madi {
         thread_storage_holder& tls = *w0.tls_;
         context *prev_ctx = tls.parent_ctx;
 
-        MADI_CHECK((uintptr_t)prev_ctx >= 128 * 1024);
+        MADI_ASSERT((uintptr_t)prev_ctx >= 128 * 1024);
 
         MADI_DPUTS3("&prev_ctx = %p", &prev_ctx);
 
@@ -296,7 +298,6 @@ namespace madi {
         worker& w1 = madi::current_worker();
 
         MADI_DPUTS3("&madi_process = %p", &madi_process);
-        MADI_DPUTS3("worker_id = %zu", madi_worker_id);
 
         MADI_CONTEXT_PRINT(3, prev_ctx);
         MADI_CONTEXT_ASSERT_WITHOUT_PARENT(prev_ctx);
