@@ -145,7 +145,7 @@ struct saved_context {
 #define MADI_CLOBBER_R19 "x19",
 #endif
 
-#define MADI_SAVE_CONTEXT_WITH_CALL__(parent_ctx_ptr, f, arg0, arg1)         \
+#define MADI_SAVE_CONTEXT_WITH_CALL(parent_ctx_ptr, f, arg0, arg1)           \
     do {                                                                     \
         register void* parent_ctx_x9 asm("x9")  = (void*)(parent_ctx_ptr);   \
         register void* f_x10         asm("x10") = (void*)(f);                \

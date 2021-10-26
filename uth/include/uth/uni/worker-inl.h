@@ -14,10 +14,6 @@
 extern "C" {
     void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2,
                                              void *p3);
-
-    void madi_save_context_with_call(madi::context *ctx,
-                                     void (*fp)(madi::context *, void *, void *),
-                                     void *arg0, void *arg1) MADI_NOINLINE MADI_UNUSED;
 }
 
 namespace madi {
@@ -80,7 +76,7 @@ namespace madi {
         MADI_DPUTS2("worker start");
 
         auto start = worker_do_start<F, Args...>;
-        madi_save_context_with_call(NULL, start, params, NULL);
+        MADI_SAVE_CONTEXT_WITH_CALL(NULL, start, params, NULL);
 
         MADI_DPUTS2("worker end");
     }
@@ -292,7 +288,7 @@ namespace madi {
 
         // save the current context to the stack
         // (copy register values to the current stack)
-        madi_save_context_with_call(prev_ctx, fp, (void *)&f, (void *)&arg);
+        MADI_SAVE_CONTEXT_WITH_CALL(prev_ctx, fp, (void *)&f, (void *)&arg);
 
         MADI_DPUTS3("resumed: parent_ctx = %p", prev_ctx);
         MADI_DPUTS3("&prev_ctx = %p", &prev_ctx);
@@ -443,7 +439,7 @@ namespace madi {
         std::tuple<saved_context *, Args...> arg(sctx, args...);
 
         // save current state
-        madi_save_context_with_call(prev_ctx, fp, (void *)f, (void *)&arg);
+        MADI_SAVE_CONTEXT_WITH_CALL(prev_ctx, fp, (void *)f, (void *)&arg);
 
         if (!w0.is_main_task_)
             MADI_CONTEXT_ASSERT_WITHOUT_PARENT(prev_ctx);

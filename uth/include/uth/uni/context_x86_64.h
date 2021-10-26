@@ -35,21 +35,16 @@ struct context {
     void *rip;
     void *rsp;
     void *rbp;
-    void *rbx;
-    void *r12;
-    void *r13;
-    void *r14;
-    void *r15;
     context *parent;
 
     uint8_t *instr_ptr() const {
         return reinterpret_cast<uint8_t *>(rip);
     }
-    
+
     uint8_t *stack_ptr() const {
         return reinterpret_cast<uint8_t *>(rsp);
     }
-    
+
     uint8_t *top_ptr() const {
         return reinterpret_cast<uint8_t *>(rsp); // - 128; // red zone
     }
@@ -66,11 +61,6 @@ struct context {
         MADI_DPUTS("rip = %p", rip);
         MADI_DPUTS("rsp = %p", rsp);
         MADI_DPUTS("rbp = %p", rbp);
-        MADI_DPUTS("rbx = %p", rbx);
-        MADI_DPUTS("r12 = %p", r12);
-        MADI_DPUTS("r13 = %p", r13);
-        MADI_DPUTS("r14 = %p", r14);
-        MADI_DPUTS("r15 = %p", r15);
         MADI_DPUTS("parent = %p", parent);
     }
 };
@@ -81,11 +71,6 @@ struct context {
         MADI_DPUTS##level("(" #ctx ")->rip    = %p", (ctx)->rip); \
         MADI_DPUTS##level("(" #ctx ")->rsp    = %p", (ctx)->rsp); \
         MADI_DPUTS##level("(" #ctx ")->rbp    = %p", (ctx)->rbp); \
-        MADI_DPUTS##level("(" #ctx ")->rbx    = %p", (ctx)->rbx); \
-        MADI_DPUTS##level("(" #ctx ")->r12    = %p", (ctx)->r12); \
-        MADI_DPUTS##level("(" #ctx ")->r13    = %p", (ctx)->r13); \
-        MADI_DPUTS##level("(" #ctx ")->r14    = %p", (ctx)->r14); \
-        MADI_DPUTS##level("(" #ctx ")->r15    = %p", (ctx)->r15); \
         MADI_DPUTS##level("(" #ctx ")->parent = %p", (ctx)->parent); \
     } while (false)
 
@@ -133,7 +118,7 @@ struct saved_context {
 #define MADI_GET_CURRENT_SP(ptr_sp)                             \
     do {                                                        \
         uint8_t *sp__ = NULL;                                   \
-        __asm__ volatile("mov %%rsp,%0\n" : "=r"(sp__));        \
+        asm volatile("mov %%rsp,%0\n" : "=r"(sp__));            \
         *(ptr_sp) = sp__;                                       \
     } while (false)
 
@@ -143,161 +128,118 @@ struct saved_context {
         *(uint8_t **)ptr_sp += 128;                             \
     } while (false)
 
-#if 1
-
-#define MADI_CLOBBERS \
-    "%rax", "%rdx", "%rsi", "%rdi", "%r8", "%r9", "%r10", "%r11", \
-    "cc", "memory"
-
-#if 0
-/*
- * FIXME: first pass で red zone を書きつぶした後に resume し得るが問題ないか？
- *        (setjmp/longjmp では setjmp が関数呼び出しとして実装されているため、
- *        この問題は発生しない)
- */
-#define MADI_SAVE_CONTEXT(ctx_ptr, parent_ctx_ptr, first_ptr)           \
-    do {                                                                \
-        char first__;                                                   \
-        asm volatile (                                                  \
-            "lea 1f(%%rip), %%rax\n\t"                                  \
-            "mov %%rax,   (%%rcx)\n\t"                                  \
-            "mov %%rsp,  8(%%rcx)\n\t"                                  \
-            "mov %%rbp, 16(%%rcx)\n\t"                                  \
-            "mov %%rbx, 24(%%rcx)\n\t"                                  \
-            "mov %%r12, 32(%%rcx)\n\t"                                  \
-            "mov %%r13, 40(%%rcx)\n\t"                                  \
-            "mov %%r14, 48(%%rcx)\n\t"                                  \
-            "mov %%r15, 56(%%rcx)\n\t"                                  \
-            "movb $1, %0\n\t"                                           \
-            "jmp 2f\n\t"                                                \
-            "1:\n\t"                                                    \
-            "mov 16(%%rcx), %%rbp\n\t"                                  \
-            "mov 24(%%rcx), %%rbx\n\t"                                  \
-            "mov 32(%%rcx), %%r12\n\t"                                  \
-            "mov 40(%%rcx), %%r13\n\t"                                  \
-            "mov 48(%%rcx), %%r14\n\t"                                  \
-            "mov 56(%%rcx), %%r15\n\t"                                  \
-            "movb $0, %0\n\t"                                           \
-            "2:\n\t"                                                    \
-            : "=&g"(first__)                                            \
-            : "c"(ctx_ptr)                                              \
-            : MADI_CLOBBERS);                                           \
-        *(first_ptr) = first__;                                         \
-                                                                        \
-        if (first__)                                                    \
-            (ctx_ptr)->parent = (parent_ctx_ptr);                       \
-    } while (false)
-#endif
-
-#define MADI_SAVE_CONTEXT_WITH_CALL__(parent_ctx_ptr, f, arg0, arg1)    \
-    do {                                                                \
-        asm volatile (                                                  \
-            /* save red zone */                                         \
-            "sub  $128, %%rsp\n\t"                                      \
-            /* 16-byte sp alignment for SIMD registers */               \
-            "mov  %%rsp, %%rax\n\t"                                     \
-            "and  $0xFFFFFFFFFFFFFFF0, %%rsp\n\t"                       \
-            "push %%rax\n\t"                                            \
-            /* parent field of context */                               \
-            "push %0\n\t"                                               \
-            /* push callee-save registers */                            \
-            "push %%r15\n\t"                                            \
-            "push %%r14\n\t"                                            \
-            "push %%r13\n\t"                                            \
-            "push %%r12\n\t"                                            \
-            "push %%rbx\n\t"                                            \
-            "push %%rbp\n\t"                                            \
-            /* sp */                                                    \
-            "lea  -16(%%rsp), %%rax\n\t"                                \
-            "push %%rax\n\t"                                            \
-            /* ip */                                                    \
-            "lea  1f(%%rip), %%rax\n\t"                                 \
-            "push %%rax\n\t"                                            \
-                                                                        \
-            /* call function */                                         \
-            "mov  %%rsp, %%rdi\n\t"                                     \
-            "call *%1\n\t"                                              \
-                                                                        \
-            /* pop ip from stack */                                     \
-            "add $8, %%rsp\n\t"                                         \
-                                                                        \
-            "1:\n\t" /* ip is popped with ret operation at resume */    \
-                                                                        \
-            /* pop sp */                                                \
-            "add $8, %%rsp\n\t"                                         \
-            /* pop callee-save registers */                             \
-            "pop %%rbp\n\t"                                             \
-            "pop %%rbx\n\t"                                             \
-            "pop %%r12\n\t"                                             \
-            "pop %%r13\n\t"                                             \
-            "pop %%r14\n\t"                                             \
-            "pop %%r15\n\t"                                             \
-            /* parent field of context */                               \
-            "add $8, %%rsp\n\t"                                         \
-            /* revert sp alignmment */                                  \
-            "pop %%rsp\n\t"                                             \
-            /* restore red zone */                                      \
-            "add $128, %%rsp\n\t"                                       \
-            :                                                           \
-            : "r"(parent_ctx_ptr), "r"(f), "S"(arg0), "d"(arg1)         \
-            : "%rax", "%rdi",                                           \
-              "%r8", "%r9", "%r10", "%r11",                             \
-              "cc", "memory");                                          \
+#define MADI_SAVE_CONTEXT_WITH_CALL(parent_ctx_ptr, f, arg0, arg1)           \
+    do {                                                                     \
+        register void* parent_ctx_r8 asm("r8")  = (void*)(parent_ctx_ptr);   \
+        register void* f_r9          asm("r9")  = (void*)(f);                \
+        register void* arg0_rsi      asm("rsi") = (void*)(arg0);             \
+        register void* arg1_rdx      asm("rdx") = (void*)(arg1);             \
+        asm volatile (                                                       \
+            /* save red zone */                                              \
+            "sub  $128, %%rsp\n\t"                                           \
+            /* 16-byte sp alignment for SIMD registers */                    \
+            "mov  %%rsp, %%rax\n\t"                                          \
+            "and  $0xFFFFFFFFFFFFFFF0, %%rsp\n\t"                            \
+            "push %%rax\n\t"                                                 \
+            /* alignment */                                                  \
+            "sub $0x8, %%rsp\n\t"                                            \
+            /* parent field of context */                                    \
+            "push %0\n\t"                                                    \
+            /* push rbp */                                                   \
+            "push %%rbp\n\t"                                                 \
+            /* sp */                                                         \
+            "lea  -16(%%rsp), %%rax\n\t"                                     \
+            "push %%rax\n\t"                                                 \
+            /* ip */                                                         \
+            "lea  1f(%%rip), %%rax\n\t"                                      \
+            "push %%rax\n\t"                                                 \
+                                                                             \
+            /* call function */                                              \
+            "mov  %%rsp, %%rdi\n\t"                                          \
+            "call *%1\n\t"                                                   \
+                                                                             \
+            /* pop ip from stack */                                          \
+            "add $8, %%rsp\n\t"                                              \
+                                                                             \
+            "1:\n\t" /* ip is popped with ret operation at resume */         \
+                                                                             \
+            /* pop sp */                                                     \
+            "add $8, %%rsp\n\t"                                              \
+            /* pop rbp */                                                    \
+            "pop %%rbp\n\t"                                                  \
+            /* parent field of context and align */                          \
+            "add $16, %%rsp\n\t"                                             \
+            /* revert sp alignmment */                                       \
+            "pop %%rsp\n\t"                                                  \
+            /* restore red zone */                                           \
+            "add $128, %%rsp\n\t"                                            \
+            : "+r"(parent_ctx_r8), "+r"(f_r9),                               \
+              "+r"(arg0_rsi), "+r"(arg1_rdx)                                 \
+            :                                                                \
+            : "%rax", "%rbx", "%rcx", "%rdi",                                \
+              "%r10", "%r11", "%r12", "%r13", "%r14", "%r15",                \
+              "cc", "memory");                                               \
     } while (false)
 
-#define MADI_RESUME_CONTEXT(ctx) \
-    do { \
-        asm volatile ( \
-            "mov %0, %%rsp\n\t" \
-            "ret\n\t" \
-            : \
-            : "g"(ctx) \
-            : MADI_CLOBBERS); \
+#define MADI_RESUME_CONTEXT(ctx)                                             \
+    do {                                                                     \
+        asm volatile (                                                       \
+            "mov %0, %%rsp\n\t"                                              \
+            "ret\n\t"                                                        \
+            :                                                                \
+            : "g"(ctx)                                                       \
+            :);                                                              \
     } while (false)
 
-#define MADI_EXECUTE_ON_STACK(f, arg0, arg1, arg2, arg3, stack_ptr)     \
-    do {                                                                \
-        uint8_t *rsp__;                                                 \
-        MADI_GET_CURRENT_SP(&rsp__);                                    \
-                                                                        \
-        uint8_t *stack__ = (uint8_t *)(stack_ptr);                      \
-        uint8_t *top__ = rsp__ - 128;                                   \
-        uint8_t *smaller_top__ = (top__ < stack__) ? top__ : stack__;   \
-        asm volatile (                                                  \
-            "mov %0, %%rsp\n\t"                                         \
-            "call " MADI_FUNC(f) "\n\t"                                 \
-            :                                                           \
-            : "g"(smaller_top__),                                       \
-              "D"(arg0), "S"(arg1), "d"(arg2), "c"(arg3)                \
-            :);                                                         \
+#define MADI_EXECUTE_ON_STACK(f, arg0, arg1, arg2, arg3, stack_ptr)          \
+    do {                                                                     \
+        uint8_t *rsp__;                                                      \
+        MADI_GET_CURRENT_SP(&rsp__);                                         \
+                                                                             \
+        uint8_t *stack__ = (uint8_t *)(stack_ptr);                           \
+        uint8_t *top__ = rsp__ - 128;                                        \
+        uint8_t *smaller_top__ = (top__ < stack__) ? top__ : stack__;        \
+        asm volatile (                                                       \
+            "mov %0, %%rsp\n\t"                                              \
+            "call " MADI_FUNC(f) "\n\t"                                      \
+            :                                                                \
+            : "g"(smaller_top__),                                            \
+              "D"(arg0), "S"(arg1), "d"(arg2), "c"(arg3)                     \
+            :);                                                              \
     } while (false)
 
-#define MADI_CALL_ON_NEW_STACK(stack, stack_size,                       \
-                               f, arg0, arg1, arg2, arg3)               \
-    do {                                                                \
-        /* calculate an initial stack pointer */                        \
-        /* on the iso-address stack */                                  \
-        uintptr_t stackintptr = (uintptr_t)(stack);                     \
-        stackintptr = stackintptr + (stack_size);                       \
-        stackintptr &= 0xFFFFFFFFFFFFFFF0;                              \
-        uint8_t *stack_ptr = (uint8_t *)(stackintptr);                  \
-                                                                        \
-       asm volatile (                                                   \
-            "mov %%rsp, %%rax\n\t"                                      \
-            "mov %0, %%rsp\n\t"                                         \
-            /* alignment for xmm register accesses */                   \
-            "sub $0x8, %%rsp\n\t"                                       \
-            "push %%rax\n\t"                                            \
-            "call *%1\n\t"                                              \
-            "pop %%rsp\n\t"                                             \
-            :                                                           \
-            : "g"(stack_ptr), "r"(f),                                   \
-              "D"(arg0), "S"(arg1), "d"(arg2), "c"(arg3)                \
-            : "%rax", "%r8", "%r9", "%r10", "%r11",                     \
-              "cc", "memory");                                          \
+#define MADI_CALL_ON_NEW_STACK(stack, stack_size,                            \
+                               f, arg0, arg1, arg2, arg3)                    \
+    do {                                                                     \
+        /* calculate an initial stack pointer */                             \
+        /* on the iso-address stack */                                       \
+        uintptr_t stackintptr = (uintptr_t)(stack);                          \
+        stackintptr = stackintptr + (stack_size);                            \
+        stackintptr &= 0xFFFFFFFFFFFFFFF0;                                   \
+        uint8_t *stack_ptr = (uint8_t *)(stackintptr);                       \
+                                                                             \
+        register void* stack_ptr_r8  asm("r8")  = (void*)(stack_ptr);        \
+        register void* f_r9          asm("r9")  = (void*)(f);                \
+        register void* arg0_rdi      asm("rdi") = (void*)(arg0);             \
+        register void* arg1_rsi      asm("rsi") = (void*)(arg1);             \
+        register void* arg2_rdx      asm("rdx") = (void*)(arg2);             \
+        register void* arg3_rcx      asm("rcx") = (void*)(arg3);             \
+                                                                             \
+        asm volatile (                                                       \
+            "mov %%rsp, %%rax\n\t"                                           \
+            "mov %0, %%rsp\n\t"                                              \
+            /* alignment for xmm register accesses */                        \
+            "sub $0x8, %%rsp\n\t"                                            \
+            "push %%rax\n\t"                                                 \
+            "call *%1\n\t"                                                   \
+            "pop %%rsp\n\t"                                                  \
+            : "+r"(stack_ptr_r8), "+r"(f_r9),                                \
+              "+r"(arg0_rdi), "+r"(arg1_rsi), "+r"(arg2_rdx), "+r"(arg3_rcx) \
+            :                                                                \
+            : "%rax", "%rbx",                                                \
+              "%r10", "%r11", "%r12", "%r13", "%r14", "%r15",                \
+              "cc", "memory");                                               \
     } while (false)
-
-#endif
 
 }
 
