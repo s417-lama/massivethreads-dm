@@ -5,7 +5,7 @@
 
 namespace madi {
 namespace comm {
-    
+
     struct threadsafe : private noncopyable {
 
         static bool compare_and_swap(volatile int *dst, int old_v, int new_v)
@@ -83,6 +83,21 @@ namespace comm {
         {
             // R->W orderings are NOT guaranteed by SPARC V9 (TSO)
             __sync_synchronize();
+        }
+#elif defined(__aarch64__)
+        static void rbarrier()
+        {
+            asm volatile("dmb ishld":::"memory");
+        }
+
+        static void wbarrier()
+        {
+            asm volatile("dmb ishst":::"memory");
+        }
+
+        static void rwbarrier()
+        {
+            asm volatile("dmb ish":::"memory");
         }
 #else
         static void rbarrier()

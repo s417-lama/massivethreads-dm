@@ -96,6 +96,10 @@ namespace madi {
         uint64_t tick;
         asm volatile("rd %%tick, %0" : "=r" (tick));
         return (tsc_t)tick;
+#elif defined(__aarch64__)
+        uint64_t tick;
+        asm volatile("isb\nmrs %0, cntvct_el0" : "=r" (tick));
+        return (tsc_t)tick;
 #else
 #warning "rdtsc() is not implemented."
         return 0;
@@ -111,6 +115,10 @@ namespace madi {
 #elif (defined __sparc__) && (defined __arch64__)
         uint64_t tick;
         asm volatile("rd %%tick, %0" : "=r" (tick));
+        return (tsc_t)tick;
+#elif defined(__aarch64__)
+        uint64_t tick;
+        asm volatile("mrs %0, cntvct_el0" : "=r" (tick));
         return (tsc_t)tick;
 #else
 #warning "rdtsc() is not implemented."
