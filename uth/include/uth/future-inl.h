@@ -305,20 +305,11 @@ namespace madi {
         int fid = f.id_;
         uth_pid_t pid = f.pid_;
 
+        entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
         if (pid == me) {
-            size_t idx = index_of_size(sizeof(entry<T>));
-            id_pools_[idx].push_back(fid);
-            in_use_id_pools_[idx].erase(
-                std::remove(
-                    in_use_id_pools_[idx].begin(),
-                    in_use_id_pools_[idx].end(),
-                    fid
-                ),
-                in_use_id_pools_[idx].end()
-            );
+            e->resume_flag = freed_val_;
         } else {
             // return fork-join descriptor to processor pid.
-            entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
             c.put_nbi(&e->resume_flag, &freed_val_, sizeof(e->resume_flag), pid);
         }
     }
