@@ -170,7 +170,7 @@ namespace madi {
 
         for (size_t i = 0; i < MAX_ENTRY_BITS; i++) {
             id_pools_[i].clear();
-            in_use_id_pools_[i].clear();
+            all_allocated_ids_[i].clear();
         }
 
         ptr_ = 0;
@@ -205,22 +205,13 @@ namespace madi {
 
         if (id_pools_[idx].empty()) {
             // collect freed future ids
-            in_use_id_pools_[idx].erase(
-                std::remove_if(
-                    in_use_id_pools_[idx].begin(),
-                    in_use_id_pools_[idx].end(),
-                    [&](int id) {
-                        entry<T> *e = (entry<T> *)(remote_bufs_[me] + id);
-                        if (e->resume_flag == freed_val_) {
-                            id_pools_[idx].push_back(id);
-                            return true;
-                        } else {
-                            return false;
-                        }
-                    }
-                ),
-                in_use_id_pools_[idx].end()
-            );
+            for (int id : all_allocated_ids_[idx]) {
+                entry<T> *e = (entry<T> *)(remote_bufs_[me] + id);
+                if (e->resume_flag == remotely_freed_val_) {
+                    id_pools_[idx].push_back(id);
+                    e->resume_flag = 0;
+                }
+            }
         }
 
         int id;
@@ -232,12 +223,12 @@ namespace madi {
             // if pool is empty, allocate a future id from ptr_
             id = ptr_;
             ptr_ += real_size;
+            all_allocated_ids_[idx].push_back(id);
         } else {
             madi::die("future pool overflow");
         }
 
         reset<T>(id);
-        in_use_id_pools_[idx].push_back(id);
         madm::uth::future<T> ret = madm::uth::future<T>(id, me);
 
         logger::end_event<logger::kind::FUTURE_POOL_GET>(bd, id);
@@ -307,10 +298,12 @@ namespace madi {
 
         entry<T> *e = (entry<T> *)(remote_bufs_[pid] + fid);
         if (pid == me) {
-            e->resume_flag = freed_val_;
+            size_t idx = index_of_size(sizeof(entry<T>));
+            id_pools_[idx].push_back(fid);
+            e->resume_flag = locally_freed_val_;
         } else {
             // return fork-join descriptor to processor pid.
-            c.put_nbi(&e->resume_flag, &freed_val_, sizeof(e->resume_flag), pid);
+            c.put_nbi(&e->resume_flag, &remotely_freed_val_, sizeof(e->resume_flag), pid);
         }
     }
 

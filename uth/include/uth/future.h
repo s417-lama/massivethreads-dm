@@ -61,18 +61,19 @@ namespace madi {
         template <class T>
         struct entry {
             T value;
-            int resume_flag; // 0/1/2: resume flag, 3: freed
+            int resume_flag; // 0/1/2: resume flag, 3/4: freed
             suspended_entry s_entry;
         };
 
-        int freed_val_ = 3;
+        int locally_freed_val_  = 3;
+        int remotely_freed_val_ = 4;
 
         int ptr_;
         int buf_size_;
         uint8_t **remote_bufs_;
 
         std::vector<int> id_pools_[MAX_ENTRY_BITS];
-        std::vector<int> in_use_id_pools_[MAX_ENTRY_BITS];
+        std::vector<int> all_allocated_ids_[MAX_ENTRY_BITS];
 
         bool forward_ret_;
         uint8_t *forward_buf_;
