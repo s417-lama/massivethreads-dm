@@ -74,47 +74,6 @@ struct context {
         MADI_DPUTS##level("(" #ctx ")->parent = %p", (ctx)->parent); \
     } while (false)
 
-
-struct saved_context {
-    bool is_main_task;
-    int is_freed;
-    void *ip;
-    void *sp;
-    context *ctx;
-    uint8_t *stack_top;
-    size_t stack_size;
-    uint8_t partial_stack[1];
-};
-
-#define MADI_SCONTEXT_ASSERT(sctx_ptr) \
-    do { \
-        MADI_UNUSED saved_context *sctx__ = (sctx_ptr); \
-        MADI_IP_ASSERT(sctx__->ip); \
-        if (!sctx__->is_main_task) { \
-            MADI_SP_ASSERT(sctx__->sp); \
-            MADI_SP_ASSERT(sctx__->ctx); \
-            MADI_SP_ASSERT(sctx__->stack_top); \
-            MADI_SP_ASSERT(sctx__->stack_top + sctx__->stack_size); \
-        } \
-    } while (false)
-
-#define MADI_SCONTEXT_PRINT(level, sctx_ptr) \
-    do { \
-        MADI_UNUSED saved_context *sctx__ = (sctx_ptr); \
-        MADI_DPUTS##level("(" #sctx_ptr ")->is_main_task = %d", \
-                          sctx__->is_main_task); \
-        MADI_DPUTS##level("(" #sctx_ptr ")->ip           = %p", \
-                          sctx__->ip); \
-        MADI_DPUTS##level("(" #sctx_ptr ")->sp           = %p", \
-                          sctx__->sp); \
-        MADI_DPUTS##level("(" #sctx_ptr ")->ctx          = %p", \
-                          sctx__->ctx); \
-        MADI_DPUTS##level("(" #sctx_ptr ")->stack_top    = %p", \
-                          sctx__->stack_top); \
-        MADI_DPUTS##level("(" #sctx_ptr ")->stack_size   = %zu", \
-                          sctx__->stack_size); \
-    } while (false)
-
 #define MADI_GET_CURRENT_SP(ptr_sp)                             \
     do {                                                        \
         uint8_t *sp__ = NULL;                                   \

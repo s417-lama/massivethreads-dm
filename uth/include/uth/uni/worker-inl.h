@@ -331,21 +331,16 @@ namespace madi {
     {
         uth_comm& c = madi::proc().com();
 
-        suspended_threads_.erase(
-            std::remove_if(
-                suspended_threads_.begin(),
-                suspended_threads_.end(),
-                [&](saved_context* sctx) {
-                    if (sctx->is_freed == freed_val_) {
-                        c.free_shared_local((void*)sctx);
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
-            ),
-            suspended_threads_.end()
-        );
+        saved_context* sctx = suspended_threads_;
+        while (sctx) {
+            if (sctx->header.is_freed == freed_val_) {
+                saved_context* sctx_freed = sctx;
+                sctx = sctx->header.next;
+                free_suspended_local(sctx_freed);
+            } else {
+                sctx = sctx->header.next;
+            }
+        }
     }
 
     inline saved_context* worker::alloc_suspended(size_t size)
@@ -363,8 +358,13 @@ namespace madi {
             madi::die("Allocation failed because of too small initial memory allocation size");
         }
 
-        ret->is_freed = 0;
-        suspended_threads_.push_back(ret);
+        ret->header.is_freed = 0;
+        ret->header.prev = NULL;
+        ret->header.next = suspended_threads_;
+        if (suspended_threads_) {
+            suspended_threads_->header.prev = ret;
+        }
+        suspended_threads_ = ret;
 
         return ret;
     }
@@ -373,18 +373,19 @@ namespace madi {
     {
         uth_comm& c = madi::proc().com();
 
-        suspended_threads_.erase(
-            std::remove(
-                suspended_threads_.begin(),
-                suspended_threads_.end(),
-                sctx
-            ),
-            suspended_threads_.end()
-        );
+        saved_context* sctx_prev = sctx->header.prev;
+        saved_context* sctx_next = sctx->header.next;
+        if (sctx_prev) {
+            sctx_prev->header.next = sctx_next;
+        } else {
+            suspended_threads_ = sctx_next;
+        }
+        if (sctx_next) {
+            sctx_next->header.prev = sctx_prev;
+        }
 
         c.free_shared_local((void *)sctx);
     }
-
 
     template <class F, class... Args>
     void worker_do_suspend(context *ctx_ptr, void *f_ptr, void *arg_ptr)
@@ -470,13 +471,16 @@ namespace madi {
         uth_pid_t target = se.pid;
         uint8_t *base = se.base;
         size_t size = se.size;
+        size_t header_size = offsetof(saved_context, is_main_task);
 
         saved_context *sctx = alloc_suspended(size);
 
-        c.get(sctx, base, size, target);
+        c.get(((uint8_t*)sctx) + header_size, base + header_size,
+              size - header_size, target);
 
         saved_context *remote_sctx = (saved_context*)base;
-        c.put_nbi(&remote_sctx->is_freed, &freed_val_, sizeof(remote_sctx->is_freed), target);
+        c.put_nbi(&remote_sctx->header.is_freed, &freed_val_,
+                  sizeof(remote_sctx->header.is_freed), target);
 
         resume(sctx);
     }

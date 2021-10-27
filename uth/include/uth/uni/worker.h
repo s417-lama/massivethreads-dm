@@ -81,9 +81,9 @@ namespace madi {
 
         future_pool fpool_;
 
-        saved_context *main_sctx_;
+        saved_context* main_sctx_;
 
-        std::vector<saved_context*> suspended_threads_;
+        saved_context* suspended_threads_ = NULL;
 
         logger::begin_data bd_resume_;
 
