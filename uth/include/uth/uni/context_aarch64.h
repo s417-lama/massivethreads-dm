@@ -186,7 +186,7 @@ struct saved_context {
             "ldp x29, x30, [sp], #16\n\t"                                    \
             "ret\n\t"                                                        \
             :                                                                \
-            : "g"(ctx)                                                       \
+            : "r"(ctx)                                                       \
             :);                                                              \
     } while (false)
 
@@ -207,7 +207,7 @@ struct saved_context {
             "mov sp, %0\n\t"                                                 \
             "blr %1\n\t"                                                     \
             :                                                                \
-            : "g"(smaller_top__), "r"(f),                                    \
+            : "r"(smaller_top__), "r"(f),                                    \
               "r"(arg0_x0), "r"(arg1_x1), "r"(arg2_x2), "r"(arg3_x3)         \
             :);                                                              \
     } while (false)
