@@ -31,7 +31,6 @@ namespace comm {
         comm_allocator *comm_alc_;
         volatile long *value_buf_;
         process_config native_config_;
-        bool polling_;
 
     public:
         comm_base(int& argc, char **& argv, amhandler_t handler);

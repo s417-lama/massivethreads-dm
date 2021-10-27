@@ -129,6 +129,9 @@
 /* Enable logger */
 #undef MADI_ENABLE_LOGGER
 
+/* Enable polling */
+#undef MADI_ENABLE_POLLING
+
 /* Disabled kinds for logger */
 #undef MADI_LOGGER_DISABLED_KINDS
 

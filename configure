@@ -790,6 +790,7 @@ enable_maintainer_mode
 enable_dependency_tracking
 with_madi_debug_level
 with_comm_layer
+enable_polling
 enable_logger
 with_logger_enabled_kinds
 with_logger_disabled_kinds
@@ -1461,6 +1462,8 @@ Optional Features:
                           do not reject slow dependency extractors
   --disable-dependency-tracking
                           speeds up one-time build
+  --enable-polling        Enable polling for communication progress. Default:
+                          no
   --enable-logger         Enable logger. Default: no
   --enable-shared[=PKGS]  build shared libraries [default=no]
   --enable-static[=PKGS]  build static libraries [default=yes]
@@ -7438,6 +7441,25 @@ fi
 
 cat >>confdefs.h <<_ACEOF
 #define MADI_COMM_LAYER $comm_layer
+_ACEOF
+
+
+#
+# polling
+#
+# Check whether --enable-polling was given.
+if test "${enable_polling+set}" = set; then :
+  enableval=$enable_polling; case "${enableval}" in
+                 yes) enable_polling=1 ;;
+                 no)  enable_polling=0 ;;
+               esac
+else
+  enable_polling=0
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define MADI_ENABLE_POLLING $enable_polling
 _ACEOF
 
 

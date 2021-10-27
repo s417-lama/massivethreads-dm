@@ -138,6 +138,19 @@ AM_CONDITIONAL([MADI_COMM_LAYER_FX10],  [test "x$comm_layer" = "xMADI_COMM_LAYER
 AC_DEFINE_UNQUOTED([MADI_COMM_LAYER],[$comm_layer],[Communication Layer])
 
 #
+# polling
+#
+AC_ARG_ENABLE([polling],
+              [AS_HELP_STRING([--enable-polling],
+                              [Enable polling for communication progress. Default: no])],
+              [case "${enableval}" in
+                 yes) enable_polling=1 ;;
+                 no)  enable_polling=0 ;;
+               esac],
+              [enable_polling=0])
+AC_DEFINE_UNQUOTED([MADI_ENABLE_POLLING], [$enable_polling], [Enable polling])
+
+#
 # Logger
 #
 AC_ARG_ENABLE([logger],

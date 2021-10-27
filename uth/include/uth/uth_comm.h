@@ -105,7 +105,7 @@ namespace madi {
         void amreply(int tag, void *p, size_t size, aminfo *info);
     };
 
-#if MADI_NEED_POLL
+#if MADI_ENABLE_POLLING
 
 #define MADI_UTH_COMM_POLL() \
     madi::proc().com().poll()
