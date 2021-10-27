@@ -91,9 +91,10 @@ namespace uth {
         madi::uth_pid_t me = c.get_pid();
 
         madi::suspended_entry se;
-        se.pid  = me;
-        se.base = (uint8_t *)sctx;
-        se.size = offsetof(madi::saved_context, partial_stack) + sctx->stack_size;
+        se.pid        = me;
+        se.base       = (uint8_t *)sctx;
+        se.size       = offsetof(madi::saved_context, partial_stack) + sctx->stack_size;
+        se.stack_top  = sctx->stack_top;
 
         if (w.fpool().sync_suspended(f, se)) {
             // return to the suspended thread again

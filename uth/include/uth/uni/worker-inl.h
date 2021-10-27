@@ -14,6 +14,8 @@
 extern "C" {
     void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2,
                                              void *p3);
+    void madi_worker_do_resume_remote_suspended(void *p0, void *p1, void *p2,
+                                                void *p3);
 }
 
 namespace madi {
@@ -382,6 +384,13 @@ namespace madi {
         c.free_shared_local((void *)sctx);
     }
 
+    inline void worker::free_suspended_remote(saved_context* sctx, pid_t target)
+    {
+        uth_comm& c = madi::proc().com();
+
+        c.put_nbi(&sctx->header.is_freed, &freed_val_, sizeof(freed_val_), target);
+    }
+
     template <class F, class... Args>
     void worker_do_suspend(context *ctx_ptr, void *f_ptr, void *arg_ptr)
     {
@@ -457,23 +466,10 @@ namespace madi {
     {
         bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_SUSPENDED>();
 
-        uth_comm& c = madi::proc().com();
-
-        uth_pid_t target = se.pid;
-        uint8_t *base = se.base;
-        size_t size = se.size;
-        size_t header_size = offsetof(saved_context, is_main_task);
-
-        saved_context *sctx = alloc_suspended(size);
-
-        c.get(((uint8_t*)sctx) + header_size, base + header_size,
-              size - header_size, target);
-
-        saved_context *remote_sctx = (saved_context*)base;
-        c.put_nbi(&remote_sctx->header.is_freed, &freed_val_,
-                  sizeof(remote_sctx->header.is_freed), target);
-
-        resume(sctx);
+        uint8_t *next_stack_top = se.stack_top - 128;
+        MADI_EXECUTE_ON_STACK(madi_worker_do_resume_remote_suspended,
+                              &se, NULL, NULL, NULL,
+                              next_stack_top);
     }
 
     inline void worker::resume_main_task()

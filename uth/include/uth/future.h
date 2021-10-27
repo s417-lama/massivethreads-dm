@@ -48,8 +48,9 @@ namespace uth {
 namespace madi {
     struct suspended_entry {
         uth_pid_t pid;
-        uint8_t *base;
+        uint8_t* base;
         size_t size;
+        uint8_t* stack_top;
     };
 
     class future_pool : noncopyable {

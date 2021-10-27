@@ -120,6 +120,7 @@ namespace madi {
 
         saved_context* alloc_suspended(size_t size);
         void free_suspended_local(saved_context* sctx);
+        void free_suspended_remote(saved_context* sctx, pid_t target);
 
     private:
         static void do_resume(worker& w, const taskq_entry& entry,

@@ -21,6 +21,8 @@ typedef madi::comm::aminfo aminfo;
 extern "C" {
     void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2,
                                              void *p3);
+    void madi_worker_do_resume_remote_suspended(void *p0, void *p1, void *p2,
+                                                void *p3);
     void madi_resume_context(context *ctx);
 }
 
@@ -186,11 +188,47 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
                  frame_base, frame_base + frame_size, frame_size);
 
+#if MADI_ENABLE_LOGGER
     if (w.get_logger_begin_data() != NULL) {
         logger::end_event<logger::kind::WORKER_RESUME_SUSPENDED>(w.get_logger_begin_data());
         w.set_logger_begin_data(NULL);
     }
+#endif
 
+    madi_resume_context(ctx);
+}
+
+__attribute__((noinline))
+void madi_worker_do_resume_remote_suspended(void *p0, void *p1, void *p2, void *p3)
+{
+    suspended_entry *se = (suspended_entry*)p0;
+
+    uth_comm& c = madi::proc().com();
+
+    uth_pid_t target = se->pid;
+    uint8_t* base = se->base;
+    size_t size = se->size;
+    size_t stack_offset = offsetof(saved_context, partial_stack);
+    size_t frame_size = size - stack_offset;
+
+    c.get(se->stack_top, base + stack_offset, frame_size, target);
+
+    worker& w = madi::current_worker();
+    saved_context *remote_sctx = (saved_context*)base;
+
+    w.free_suspended_remote(remote_sctx, target);
+
+    MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
+                 se->stack_top, se->stack_top + frame_size, frame_size);
+
+#if MADI_ENABLE_LOGGER
+    if (w.get_logger_begin_data() != NULL) {
+        logger::end_event<logger::kind::WORKER_RESUME_SUSPENDED>(w.get_logger_begin_data());
+        w.set_logger_begin_data(NULL);
+    }
+#endif
+
+    context* ctx = (context*)se->stack_top;
     madi_resume_context(ctx);
 }
 
