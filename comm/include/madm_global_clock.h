@@ -7,6 +7,8 @@
 
 #include <mpi.h>
 
+#include "madm/madm_comm_config.h"
+
 namespace madi {
 
     class global_clock {
@@ -143,7 +145,9 @@ namespace madi {
                 MPI_Comm_rank(gc.inter_comm_, &gc.inter_rank_);
                 MPI_Comm_size(gc.inter_comm_, &gc.inter_nproc_);
 
+#if MADI_ENABLE_LOGGER
                 sync();
+#endif
 
                 gc.initialized_ = true;
             }
