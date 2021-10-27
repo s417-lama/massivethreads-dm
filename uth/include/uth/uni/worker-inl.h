@@ -36,14 +36,12 @@ namespace madi {
 
         worker& w = madi::current_worker();
 
-        thread_storage_holder tls(NULL, ctx);
-
         uint8_t *stack_top;
         MADI_GET_CURRENT_STACK_TOP(&stack_top);
 
         w.max_stack_usage_ = 0;
         w.stack_bottom_ = stack_top;
-        w.tls_ = &tls;
+        w.cur_ctx_ = ctx;
         w.is_main_task_ = true;
 
         // execute the start function
@@ -53,7 +51,7 @@ namespace madi {
 
         madi::barrier();
 
-        w.tls_ = NULL;
+        w.cur_ctx_ = NULL;
         w.is_main_task_ = false;
     }
 
@@ -66,10 +64,10 @@ namespace madi {
 
         /* this function call makes worker_start
            look like a non-leaf function.
-           this is necessary because otherwise, 
+           this is necessary because otherwise,
            the compiler may generate code that does
            not properly align stack pointer before
-           the call instruction done by 
+           the call instruction done by
            MADI_SAVE_CONTEXT_WITH_CALL. */
         make_it_non_leaf();
 
@@ -257,16 +255,14 @@ namespace madi {
         }
 #endif
 
-        // allocate and init thread (task) local storage on the stack
-        thread_storage_holder tls(w0.tls_, &ctx);
-        w0.tls_ = &tls;
+        w0.cur_ctx_ = ctx_ptr;
 
-        MADI_DPUTS2("start (tls = %p)", &tls);
+        MADI_DPUTS2("start (ctx = %p)", ctx_ptr);
 
         // execute a child thread
         tuple_apply<void>::f<F, Args...>(f, arg);
 
-        MADI_DPUTS2("end (tls = %p)", &tls);
+        MADI_DPUTS2("end (ctx = %p)", ctx_ptr);
     }
 
     template <class F, class... Args>
@@ -274,8 +270,7 @@ namespace madi {
     {
         worker& w0 = *this;
 
-        thread_storage_holder& tls = *w0.tls_;
-        context *prev_ctx = tls.parent_ctx;
+        context *prev_ctx = w0.cur_ctx_;
 
         MADI_ASSERT((uintptr_t)prev_ctx >= 128 * 1024);
 
@@ -302,7 +297,7 @@ namespace madi {
         MADI_CONTEXT_PRINT(3, prev_ctx);
         MADI_CONTEXT_ASSERT_WITHOUT_PARENT(prev_ctx);
 
-        w1.tls_ = &tls;
+        w1.cur_ctx_ = prev_ctx;
 
 #if MADI_ENABLE_STEAL_PROF
         // FIXME: if this thread is stolen
@@ -410,10 +405,7 @@ namespace madi {
         // update the first argument of f from NULL to sctx
         std::get<0>(arg) = sctx;
 
-//         // allocate and init thread local storage
-//         thread_storage_holder tls(w0.tls_, ctx_ptr);
-//         w0.tls_ = &tls;
-        w0.tls_ = NULL;
+        w0.cur_ctx_ = NULL;
 
         // execute a thread start function
         tuple_apply<void>::f(f, arg);
@@ -429,8 +421,7 @@ namespace madi {
 
         worker& w0 = *this;
 
-        thread_storage_holder& tls = *w0.tls_;
-        context *prev_ctx = tls.parent_ctx;
+        context *prev_ctx = w0.cur_ctx_;
 
         if (!w0.is_main_task_)
             MADI_CONTEXT_ASSERT_WITHOUT_PARENT(prev_ctx);
@@ -446,7 +437,7 @@ namespace madi {
         if (!w0.is_main_task_)
             MADI_CONTEXT_ASSERT_WITHOUT_PARENT(prev_ctx);
 
-        madi::current_worker().tls_ = &tls;
+        madi::current_worker().cur_ctx_ = prev_ctx;
 
         // call a function registered by at_thread_resuming
         madi::proc().call_thread_resuming();

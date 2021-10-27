@@ -19,18 +19,6 @@ namespace madi {
     inline bool initialized() { return madi::proc().initialized(); }
 
     template <class T>
-    void set_thread_local(T *value)
-    {
-        madi::current_worker().set_thread_local(value);
-    }
-
-    template <class T>
-    T * get_thread_local()
-    {
-        return madi::current_worker().get_thread_local<T>();
-    }
-
-    template <class T>
     void set_worker_local(T *value)
     {
         madi::current_worker().set_worker_local(value);

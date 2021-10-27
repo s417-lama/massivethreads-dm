@@ -26,11 +26,6 @@ namespace madi {
     iso_space& get_iso_space();
 
     template <class T>
-    void set_thread_local(T *value);
-    template <class T>
-    T * get_thread_local();
-
-    template <class T>
     void set_worker_local(T *value);
     template <class T>
     T * get_worker_local();

@@ -20,23 +20,6 @@ namespace madi {
 
     struct steal_rep;
 
-    struct thread_storage_holder {
-        int debug;
-        thread_storage_holder *parent;
-        context *parent_ctx;
-        bool stolen;
-        void *value;
-    public:
-        explicit thread_storage_holder(thread_storage_holder *tls,
-                                       context *ctx)
-            : debug(423)
-            , parent(tls)
-            , parent_ctx(ctx)
-            , stolen(false)
-            , value(NULL) {}
-        ~thread_storage_holder() = default;
-    };
-
     template <class F, class... Args>
     inline void worker_start(void *arg0, void *arg1, void *arg2, void *arg3);
     template <class F, class... Args>
@@ -68,10 +51,11 @@ namespace madi {
         int freed_val_ = 1;
 
         void *wls_;
-        thread_storage_holder *tls_;
         bool is_main_task_;
         size_t max_stack_usage_;
         uint8_t *stack_bottom_;
+
+        context* cur_ctx_;
 
         taskque *taskq_;
         taskque **taskq_array_;
@@ -122,14 +106,6 @@ namespace madi {
         taskque& taskq() { return *taskq_; }
 
         size_t max_stack_usage() const { return max_stack_usage_; }
-
-        template <class T> void set_thread_local(T *value)
-        { MADI_ASSERT(tls_ != NULL);
-          tls_->value = reinterpret_cast<void *>(value); }
-
-        template <class T> T * get_thread_local()
-        { MADI_ASSERT(tls_ != NULL); MADI_ASSERT(tls_->debug == 423);
-          return reinterpret_cast<T *>(tls_->value); }
 
         template <class T> void set_worker_local(T *value)
         { wls_= reinterpret_cast<void *>(value); }

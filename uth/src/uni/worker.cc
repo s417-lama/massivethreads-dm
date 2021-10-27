@@ -42,7 +42,7 @@ struct steal_rep {
 
 worker::worker() :
     wls_(NULL),
-    tls_(NULL),
+    cur_ctx_(NULL),
     is_main_task_(false),
     taskq_(NULL), taskq_array_(NULL), taskq_entries_array_(NULL),
     fpool_(),
@@ -56,7 +56,7 @@ worker::~worker()
 
 worker::worker(const worker& sched) :
     wls_(NULL),
-    tls_(NULL),
+    cur_ctx_(NULL),
     is_main_task_(false),
     taskq_(), taskq_array_(NULL), taskq_entries_array_(NULL),
     fpool_(),
