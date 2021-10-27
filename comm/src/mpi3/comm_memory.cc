@@ -15,16 +15,16 @@ namespace comm {
 #define CMR_BASE_ADDR  (reinterpret_cast<uint8_t *>(0x30000000000))
 
     enum cmr_constants {
-        // Up to 2^30 = 64 MB / process
-        CMR_MAX_BITS = 26,
+        // Up to 2^23 = 8 MB / process
+        CMR_MAX_BITS = 23,
         CMR_MAX_SIZE = 1UL << CMR_MAX_BITS,
 
-        // Up to 2^14 = 16384 processes
-        CMR_PROC_BITS = 14,
+        // Up to 2^17 = 131072 processes
+        CMR_PROC_BITS = 17,
         CMR_PROC_SIZE = 1UL << CMR_PROC_BITS,
 
-        // Initial allocation is 2^25 = 32 MB / process
-        CMR_BASE_BITS = 25,
+        // Initial allocation is 2^22 = 4 MB / process
+        CMR_BASE_BITS = 22,
         CMR_BASE_SIZE = 1UL << CMR_BASE_BITS,
     };
 
