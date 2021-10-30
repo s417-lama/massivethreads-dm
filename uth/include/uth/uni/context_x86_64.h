@@ -89,10 +89,10 @@ struct context {
 
 #define MADI_SAVE_CONTEXT_WITH_CALL(parent_ctx_ptr, f, arg0, arg1)           \
     do {                                                                     \
-        register void* parent_ctx_r8 asm("r8")  = (void*)(parent_ctx_ptr);   \
-        register void* f_r9          asm("r9")  = (void*)(f);                \
-        register void* arg0_rsi      asm("rsi") = (void*)(arg0);             \
-        register void* arg1_rdx      asm("rdx") = (void*)(arg1);             \
+        register void* parent_ctx_r8 asm("r8") = (void*)(parent_ctx_ptr);    \
+        register void* f_r9          asm("r9") = (void*)(f);                 \
+        void* arg0__ = (void*)(arg0);                                        \
+        void* arg1__ = (void*)(arg1);                                        \
         asm volatile (                                                       \
             /* save red zone */                                              \
             "sub  $128, %%rsp\n\t"                                           \
@@ -133,7 +133,7 @@ struct context {
             /* restore red zone */                                           \
             "add $128, %%rsp\n\t"                                            \
             : "+r"(parent_ctx_r8), "+r"(f_r9),                               \
-              "+r"(arg0_rsi), "+r"(arg1_rdx)                                 \
+              "+S"(arg0__), "+d"(arg1__)                                     \
             :                                                                \
             : "%rax", "%rbx", "%rcx", "%rdi",                                \
               "%r10", "%r11", "%r12", "%r13", "%r14", "%r15",                \
@@ -177,12 +177,12 @@ struct context {
         stackintptr &= 0xFFFFFFFFFFFFFFF0;                                   \
         uint8_t *stack_ptr = (uint8_t *)(stackintptr);                       \
                                                                              \
-        register void* stack_ptr_r8  asm("r8")  = (void*)(stack_ptr);        \
-        register void* f_r9          asm("r9")  = (void*)(f);                \
-        register void* arg0_rdi      asm("rdi") = (void*)(arg0);             \
-        register void* arg1_rsi      asm("rsi") = (void*)(arg1);             \
-        register void* arg2_rdx      asm("rdx") = (void*)(arg2);             \
-        register void* arg3_rcx      asm("rcx") = (void*)(arg3);             \
+        register void* stack_ptr_r8  asm("r8") = (void*)(stack_ptr);         \
+        register void* f_r9          asm("r9") = (void*)(f);                 \
+        void* arg0__ = (void*)(arg0);                                        \
+        void* arg1__ = (void*)(arg1);                                        \
+        void* arg2__ = (void*)(arg2);                                        \
+        void* arg3__ = (void*)(arg3);                                        \
                                                                              \
         asm volatile (                                                       \
             "mov %%rsp, %%rax\n\t"                                           \
@@ -193,7 +193,7 @@ struct context {
             "call *%1\n\t"                                                   \
             "pop %%rsp\n\t"                                                  \
             : "+r"(stack_ptr_r8), "+r"(f_r9),                                \
-              "+r"(arg0_rdi), "+r"(arg1_rsi), "+r"(arg2_rdx), "+r"(arg3_rcx) \
+              "+D"(arg0__), "+S"(arg1__), "+d"(arg2__), "+c"(arg3__)         \
             :                                                                \
             : "%rax", "%rbx",                                                \
               "%r10", "%r11", "%r12", "%r13", "%r14", "%r15",                \
