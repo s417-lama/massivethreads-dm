@@ -201,25 +201,25 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
 __attribute__((noinline))
 void madi_worker_do_resume_remote_suspended(void *p0, void *p1, void *p2, void *p3)
 {
-    suspended_entry *se = (suspended_entry*)p0;
+    saved_context* remote_sctx = (saved_context*)p0;
+    size_t size = (size_t)p1;
+    uint8_t* stack_top = (uint8_t*)p2;
+    uth_pid_t target = (uth_pid_t)p3;
 
     uth_comm& c = madi::proc().com();
 
-    uth_pid_t target = se->pid;
-    uint8_t* base = se->base;
-    size_t size = se->size;
+    uint8_t* base = (uint8_t*)remote_sctx;
     size_t stack_offset = offsetof(saved_context, partial_stack);
     size_t frame_size = size - stack_offset;
 
-    c.get(se->stack_top, base + stack_offset, frame_size, target);
+    c.get(stack_top, base + stack_offset, frame_size, target);
 
     worker& w = madi::current_worker();
-    saved_context *remote_sctx = (saved_context*)base;
 
     w.free_suspended_remote(remote_sctx, target);
 
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
-                 se->stack_top, se->stack_top + frame_size, frame_size);
+                 stack_top, stack_top + frame_size, frame_size);
 
 #if MADI_ENABLE_LOGGER
     if (w.get_logger_begin_data() != NULL) {
@@ -228,7 +228,7 @@ void madi_worker_do_resume_remote_suspended(void *p0, void *p1, void *p2, void *
     }
 #endif
 
-    context* ctx = (context*)se->stack_top;
+    context* ctx = (context*)stack_top;
     madi_resume_context(ctx);
 }
 

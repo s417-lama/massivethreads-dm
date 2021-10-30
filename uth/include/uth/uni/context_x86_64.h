@@ -158,12 +158,18 @@ struct context {
         uint8_t *stack__ = (uint8_t *)(stack_ptr);                           \
         uint8_t *top__ = rsp__ - 128;                                        \
         uint8_t *smaller_top__ = (top__ < stack__) ? top__ : stack__;        \
+                                                                             \
+        void* arg0__ = (void*)(arg0);                                        \
+        void* arg1__ = (void*)(arg1);                                        \
+        void* arg2__ = (void*)(arg2);                                        \
+        void* arg3__ = (void*)(arg3);                                        \
+                                                                             \
         asm volatile (                                                       \
             "mov %0, %%rsp\n\t"                                              \
             "call " MADI_FUNC(f) "\n\t"                                      \
             :                                                                \
             : "g"(smaller_top__),                                            \
-              "D"(arg0), "S"(arg1), "d"(arg2), "c"(arg3)                     \
+              "D"(arg0__), "S"(arg1__), "d"(arg2__), "c"(arg3__)             \
             :);                                                              \
     } while (false)
 

@@ -468,7 +468,7 @@ namespace madi {
 
         uint8_t *next_stack_top = se.stack_top - 128;
         MADI_EXECUTE_ON_STACK(madi_worker_do_resume_remote_suspended,
-                              &se, NULL, NULL, NULL,
+                              se.base, se.size, se.stack_top, se.pid,
                               next_stack_top);
     }
 
