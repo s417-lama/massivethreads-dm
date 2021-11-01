@@ -30,6 +30,7 @@ if [[ "$MACHINE_NAME" == ito ]]; then
   # CFLAGS="$CFLAGS -O0 -g"
   # CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure --with-comm-layer=mpi3 --with-madi-debug-level=$DEBUG_LEVEL --prefix=${INSTALL_DIR}
 elif [[ "$MACHINE_NAME" == wisteria-o ]]; then
+  CFLAGS="-Nclang"
   CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure MPICC=mpifccpx MPICXX=mpiFCCpx --host=aarch64 --with-comm-layer=mpi3 --prefix=${INSTALL_DIR}
   # CCFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ./configure MPICC=mpifccpx MPICXX=mpiFCCpx --host=aarch64 --with-comm-layer=mpi3 --enable-logger --with-logger-enabled-kinds="$enabled_kinds" --with-logger-disabled-kinds="$disabled_kinds" --prefix=${INSTALL_DIR}
 

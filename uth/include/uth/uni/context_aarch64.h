@@ -90,7 +90,7 @@ struct context {
     "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
 #endif
 
-#if 1
+#ifdef __FUJITSU
 // FIXME: Fujitsu compiler (v1.2.31) generates the illegal instruction
 //            ldp     x19, x19, [x29, #-16]
 //        if we specify x19 in the clobbered list.
