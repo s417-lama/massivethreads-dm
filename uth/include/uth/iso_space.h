@@ -24,7 +24,7 @@ namespace madi {
             SHARED_LOCAL_SIZE    = 1ul << SHARED_LOCAL_BITS,
             SHARED_SIZE          = 1ul << SHARED_BITS,
 
-            SHARED_BASE          = 0x40000000000,
+            SHARED_BASE          = 0x700000000000,
         };
 
         static uint8_t * const DEFAULT_ISO_SPACE_BASE;

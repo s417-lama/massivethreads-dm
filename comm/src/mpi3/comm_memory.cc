@@ -12,20 +12,16 @@
 namespace madi {
 namespace comm {
 
-#define CMR_BASE_ADDR  (reinterpret_cast<uint8_t *>(0x30000000000))
+#define CMR_BASE_ADDR  (reinterpret_cast<uint8_t *>(0x500000000000))
 
     enum cmr_constants {
-        // Up to 2^23 = 8 MB / process
-        CMR_MAX_BITS = 23,
+        // Up to 2^28 = 256 MB / process
+        CMR_MAX_BITS = 28,
         CMR_MAX_SIZE = 1UL << CMR_MAX_BITS,
 
         // Up to 2^17 = 131072 processes
         CMR_PROC_BITS = 17,
         CMR_PROC_SIZE = 1UL << CMR_PROC_BITS,
-
-        // Initial allocation is 2^22 = 4 MB / process
-        CMR_BASE_BITS = 22,
-        CMR_BASE_SIZE = 1UL << CMR_BASE_BITS,
     };
 
     comm_memory::comm_memory(process_config& config)
@@ -35,7 +31,7 @@ namespace comm {
         , size_(0)
         , rdma_addrs_(256, NULL)
         , rdma_idx_(0)
-        , rdma_ids_(CMR_MAX_BITS - CMR_BASE_BITS, 256)
+        , rdma_ids_(CMR_MAX_BITS - get_env("MADM_COMM_ALLOC_BITS", 22) + 1, 256)
         , region_begin_(CMR_BASE_ADDR)
         , region_end_(region_begin_ + (size_t)CMR_PROC_SIZE * CMR_MAX_SIZE)
     {
@@ -96,9 +92,10 @@ namespace comm {
                 idx = 0;
                 offset2 = offset;
             } else {
-                size_t bits = 64 - __builtin_clzll(offset);
-                idx = bits - CMR_BASE_BITS;
-                offset2 = offset - (1ULL << (bits - 1)); // FIXME: incorrect
+                /* size_t bits = 64 - __builtin_clzll(offset); */
+                /* idx = bits - CMR_BASE_BITS; */
+                /* offset2 = offset - (1ULL << (bits - 1)); // FIXME: incorrect */
+                madi::die("FIXME");
             }
 
             MADI_ASSERTP2(0 <= idx && idx < rdma_idx_, idx, rdma_idx_);
@@ -166,13 +163,10 @@ namespace comm {
             return NULL;
 
         // FIXME:
-        MADI_ASSERTP1(size <= CMR_MAX_SIZE, size);
-        MADI_CHECK(size <= CMR_MAX_SIZE);
+        /* MADI_ASSERTP1(size <= CMR_MAX_SIZE, size); */
+        /* MADI_CHECK(size <= CMR_MAX_SIZE); */
 
-        void *p = extend(config);
-
-        while (size_ < size)
-            extend(config);
+        void *p = extend(size, config);
 
         return p;
     }
@@ -225,7 +219,7 @@ namespace comm {
         touch_pages(addr, size);
     }
 
-    void * comm_memory::extend(process_config& config)
+    void * comm_memory::extend(size_t size, process_config& config)
     {
         int me = config.get_native_pid();
         MPI_Comm comm = config.comm();
@@ -233,16 +227,10 @@ namespace comm {
         size_t idx = rdma_idx_;
 
         if (idx != 0) {
-            MADI_DIE("FIXME: extend() implementation is incorrect");
+            MADI_DIE("FIXME: the RDMA region cannot be extended");
         }
 
-        MADI_CHECK(idx <= CMR_MAX_BITS - CMR_BASE_BITS);
-
         int memid = memid_of_index(idx);
-
-        size_t base_bits = CMR_BASE_BITS;
-        size_t bits = (idx == 0) ? base_bits : base_bits + idx;
-        size_t size = 1UL << bits;
 
         uint8_t *base_addr = base_address(me) + size_;
 

@@ -46,7 +46,7 @@ namespace comm {
         size_t index_of_memid(int memid) const;
         size_t memid_of_index(int idx) const;
         uint8_t * base_address(int pid) const;
-        void * extend(process_config& config);
+        void * extend(size_t size, process_config& config);
         void coll_mmap_with_id(int memid, uint8_t *addr, size_t size,
                                process_config& config);
     };
