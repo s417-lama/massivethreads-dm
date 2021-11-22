@@ -42,9 +42,11 @@ namespace madi {
 
         friend void madi_worker_do_resume_remote(void *p0, void *p1,
                                                  void *p2, void *p3);
+        friend void resume_remote_evacuated_context(saved_context *sctx,
+                                                    suspended_entry *se);
         friend void resume_remote_context(saved_context *sctx,
                                           std::tuple<taskq_entry *,
-                                          uth_pid_t, taskque *, tsc_t> *arg);
+                                          uth_pid_t, taskque *> *arg);
         friend void resume_remote_context_by_messages(saved_context *sctx,
                                                       steal_rep *rep);
 

@@ -21,6 +21,8 @@ namespace uth {
 
     void set_user_poll(void (*poll)());
 
+    void discard_all_futures();
+
     long tick();
     double time();
 

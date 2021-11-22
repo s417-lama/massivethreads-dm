@@ -12,10 +12,12 @@
 
 namespace madi {
 
+    // TODO: share the definition with suspended_entry
     struct taskq_entry {
-        uint8_t *frame_base;
+        uth_pid_t pid;
+        uint8_t* frame_base;
         size_t frame_size;
-        context *ctx;
+        uint8_t* stack_top;
     };
 
 #define MADI_TENTRY_PRINT(level, entry_ptr) \
@@ -25,19 +27,10 @@ namespace madi {
                           e__->frame_base); \
         MADI_DPUTS##level("(" #entry_ptr ")->frame_size = %zu", \
                           e__->frame_size); \
-        MADI_DPUTS##level("(" #entry_ptr ")->ctx        = %p", \
-                          e__->ctx); \
-    } while (false)
-
-#define MADI_TENTRY_ASSERT(entry_ptr) \
-    do { \
-        MADI_UNUSED madi::taskq_entry *e__ = (entry_ptr); \
-        MADI_ASSERT(e__->frame_base <= (uint8_t *)e__->ctx); \
-        MADI_ASSERT((uint8_t *)e__->ctx < e__->frame_base + e__->frame_size); \
-        MADI_ASSERT(e__->ctx->parent != NULL); \
-        MADI_ASSERT(e__->frame_base <= (uint8_t *)e__->ctx->parent); \
-        MADI_ASSERT((uint8_t *)e__->ctx->parent \
-                    < e__->frame_base + e__->frame_size); \
+        MADI_DPUTS##level("(" #entry_ptr ")->pid        = %zu", \
+                          e__->pid); \
+        MADI_DPUTS##level("(" #entry_ptr ")->stack_top  = %p", \
+                          e__->stack_top); \
     } while (false)
 
     class global_taskque {

@@ -8,33 +8,33 @@
 namespace madm {
 namespace uth {
 
-    template <class T>
-    thread<T>::thread() : future_() {}
+    template <class T, int NDEPS>
+    thread<T, NDEPS>::thread() : future_() {}
 
-    template <class T>
+    template <class T, int NDEPS>
     template <class F, class... Args>
-    thread<T>::thread(const F& f, Args... args)
+    thread<T, NDEPS>::thread(const F& f, Args... args)
         : future_()
     {
         madi::logger::checkpoint<madi::logger::kind::THREAD>();
 
         madi::worker& w = madi::current_worker();
-        future_ = future<T>::make(w);
+        future_ = future<T, NDEPS>::make(w);
 
         w.fork(start<F, Args...>, future_, f, args...);
 
         madi::logger::checkpoint<madi::logger::kind::SCHED>();
     }
 
-    template <class T>
-    T thread<T>::join()
+    template <class T, int NDEPS>
+    T thread<T, NDEPS>::join(int dep_id)
     {
-        return future_.get();
+        return future_.get(dep_id);
     }
 
-    template <class T>
+    template <class T, int NDEPS>
     template <class F, class... Args>
-    void thread<T>::start(future<T> fut, F f, Args... args)
+    void thread<T, NDEPS>::start(future<T, NDEPS> fut, F f, Args... args)
     {
         madi::logger::checkpoint<madi::logger::kind::SCHED>();
 
@@ -45,10 +45,10 @@ namespace uth {
         fut.set(value);
     }
 
-    template <>
-    class thread<void> {
+    template <int NDEPS>
+    class thread<void, NDEPS> {
     private:
-        future<long> future_;
+        future<long, NDEPS> future_;
 
     public:
         // constr/destr with no thread
@@ -63,7 +63,7 @@ namespace uth {
             madi::logger::checkpoint<madi::logger::kind::THREAD>();
 
             madi::worker& w = madi::current_worker();
-            future_ = future<long>::make(w);
+            future_ = future<long, NDEPS>::make(w);
 
             w.fork(start<F, Args...>, future_, f, args...);
 
@@ -74,11 +74,11 @@ namespace uth {
         thread& operator=(const thread&) = delete;
         thread(thread&& other);  // TODO: implement
 
-        void join() { future_.get(); }
+        void join(int dep_id = 0) { future_.get(dep_id); }
 
     private:
         template <class F, class... Args>
-        static void start(future<long> fut, F f, Args... args)
+        static void start(future<long, NDEPS> fut, F f, Args... args)
         {
             madi::logger::checkpoint<madi::logger::kind::SCHED>();
 

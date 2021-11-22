@@ -8,12 +8,11 @@
 namespace madm {
 namespace uth {
 
-    template <class T>
+    template <class T, int NDEPS = 1>
     class thread {
-
         // shared object
-        future<T> future_;
-      
+        future<T, NDEPS> future_;
+
     public:
         // constr/destr with no thread
         thread();
@@ -23,15 +22,11 @@ namespace uth {
         template <class F, class... Args>
         explicit thread(const F& f, Args... args);
 
-        // copy and move constrs
-        thread& operator=(const thread&) = delete;
-        thread(thread&& other);  // TODO: implement
-
-        T join();
+        T join(int dep_id = 0);
 
     private:
         template <class F, class... Args>
-        static void start(future<T> fut, F f, Args... args);
+        static void start(future<T, NDEPS> fut, F f, Args... args);
     };
 
     typedef madi::saved_context saved_context;

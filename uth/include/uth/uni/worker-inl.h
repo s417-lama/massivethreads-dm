@@ -233,11 +233,10 @@ namespace madi {
 
             // push the current (parent) thread
             taskq_entry entry;
+            entry.pid        = c.get_pid();
             entry.frame_base = ctx.top_ptr();
             entry.frame_size = ctx.stack_size();
-            entry.ctx = &ctx;
-
-            MADI_TENTRY_ASSERT(&entry);
+            entry.stack_top  = 0;
 
             MADI_ASSERT(entry.frame_size < 128 * 1024);
 

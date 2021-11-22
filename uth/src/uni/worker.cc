@@ -236,41 +236,17 @@ __attribute__((noinline))
 void madi_worker_do_resume_remote_context_1(uth_comm& c,
                                             uth_pid_t victim,
                                             taskque *taskq,
-                                            taskq_entry *entry,
-                                            tsc_t t0)
+                                            taskq_entry *entry)
 {
     MADI_UNUSED uint8_t *frame_base = (uint8_t *)entry->frame_base;
     MADI_UNUSED size_t frame_size = entry->frame_size;
 
-    context *ctx = entry->ctx;
+    context *ctx = (context*)entry->frame_base;
 
     MADI_TENTRY_PRINT(2, entry);
     MADI_CONTEXT_PRINT(2, ctx);
-    MADI_CONTEXT_PRINT(2, entry->ctx->parent);
-
-    //    MADI_TENTRY_ASSERT(entry);
-    //    MADI_CONTEXT_ASSERT(ctx);
-
-#if MADI_ENABLE_STEAL_PROF
-    long t1 = rdtsc();
-#endif
-
-#if MADI_ENABLE_STEAL_PROF
-    prof_steal_entry& e = g_prof->current_steal();
-    e.stack_transfer = t1 - t0;
-    e.ctx = (void *)ctx;
-    e.frame_size = frame_size;
-    e.me = c.get_pid();
-    e.victim = victim;
-#endif
 
     taskq->unlock(c, victim);
-
-#if MADI_ENABLE_STEAL_PROF
-    long t2 = rdtsc();
-    e.unlock = t2 - t1;
-    e.tmp = t2;
-#endif
 
     MADI_DPUTSR1("resuming  [%p, %p) (size = %zu) (stolen)",
                  frame_base, frame_base + frame_size, frame_size);
@@ -289,13 +265,12 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
     // data pointed from the parameter pointers may be corrupted
     // by stack copy, so we have to copy it to the current stack frame.
 
-    std::tuple<taskq_entry *, uth_pid_t, taskque *, tsc_t>& arg =
-        *(std::tuple<taskq_entry *, uth_pid_t, taskque *, tsc_t> *)p0;
+    std::tuple<taskq_entry *, uth_pid_t, taskque *>& arg =
+        *(std::tuple<taskq_entry *, uth_pid_t, taskque *> *)p0;
 
     taskq_entry entry = *std::get<0>(arg);
     uth_pid_t victim = std::get<1>(arg);
     taskque *taskq = std::get<2>(arg);
-    tsc_t t0 = std::get<3>(arg);
 
     iso_space& ispace = madi::proc().ispace();
     uth_comm& c = madi::proc().com();
@@ -324,8 +299,7 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
 
     c.reg_get(frame_base, frame_base, frame_size, victim);
 
-    madi_worker_do_resume_remote_context_1(c, victim, taskq, &entry,
-                                           t0);
+    madi_worker_do_resume_remote_context_1(c, victim, taskq, &entry);
 }
 
 __attribute__((noinline))
@@ -335,14 +309,10 @@ void madi_worker_do_resume_remote_context_by_messages_1(steal_rep *rep)
     MADI_UNUSED uint8_t *frame_base = (uint8_t *)entry->frame_base;
     MADI_UNUSED size_t frame_size = entry->frame_size;
 
-    context *ctx = entry->ctx;
+    context *ctx = (context*)entry->frame_base;
 
     MADI_TENTRY_PRINT(2, entry);
     MADI_CONTEXT_PRINT(2, ctx);
-    MADI_CONTEXT_PRINT(2, entry->ctx->parent);
-
-    //    MADI_TENTRY_ASSERT(entry);
-    //    MADI_CONTEXT_ASSERT(ctx);
 
     MADI_DPUTSR1("resuming  [%p, %p) (size = %zu) (stolen)",
                  frame_base, frame_base + frame_size, frame_size);
@@ -416,86 +386,48 @@ bool worker::steal_with_lock(taskq_entry *entry,
     taskque *taskq = taskq_array_[target];
 
     if (uth_options.aborting_steal) {
-#if MADI_ENABLE_STEAL_PROF
-        long t0 = rdtsc();
-#endif
-
         bool do_abort = taskq->empty(c, target, taskq_buf_);
 
-#if MADI_ENABLE_STEAL_PROF
-        long t1 = rdtsc();
-        g_prof->current_steal().empty_check = t1 - t0;
-#endif
-
         if (do_abort) {
-#if MADI_ENABLE_STEAL_PROF
-            g_prof->n_aborted_steals += 1;
-#endif
             return false;
         }
     }
 
-#if MADI_ENABLE_STEAL_PROF
-    long t2 = rdtsc();
-#endif
-
     bool success;
     success = taskq->trylock(c, target);
 
-#if MADI_ENABLE_STEAL_PROF
-    long t3 = rdtsc();
-    g_prof->current_steal().lock = t3 - t2;
-#endif
-
     if (!success) {
         MADI_DPUTSR1("steal lock failed");
-#if MADI_ENABLE_STEAL_PROF
-        g_prof->n_failed_steals_lock += 1;
-#endif
         return false;
     }
 
     success = taskq->steal(c, target, entries, entry, taskq_buf_);
 
-#if MADI_ENABLE_STEAL_PROF
-    long t4 = rdtsc();
-    g_prof->current_steal().steal = t4 - t3;
-#endif
-
     if (!success) {
         MADI_DPUTSR1("steal task empty");
         taskq->unlock(c, target);
 
-#if MADI_ENABLE_STEAL_PROF
-        long t5 = rdtsc();
-        g_prof->current_steal().unlock = t5 - t4;
-        g_prof->n_failed_steals_empty += 1;
-#endif
-
         return false;
     }
-
-#if MADI_ENABLE_STEAL_PROF
-    g_prof->n_success_steals += 1;
-#endif
 
     *taskq_ptr = taskq;  // for unlock when task stack is transfered
     return true;
 }
 
+void resume_remote_evacuated_context(saved_context *sctx,
+                                     suspended_entry *se)
+{
+    worker& w = madi::current_worker();
+
+    w.is_main_task_ = false;
+
+    w.resume_remote_suspended(*se);
+}
 
 void resume_remote_context(saved_context *sctx,
                            std::tuple<taskq_entry *, uth_pid_t,
-                                      taskque *, tsc_t> *arg)
+                                      taskque *> *arg)
 {
-#if MADI_ENABLE_STEAL_PROF
-    long t0 = std::get<3>(*arg);
-    long t1 = rdtsc();
-    g_prof->current_steal().suspend = t1 - t0;
-
-    std::get<3>(*arg) = t1;
-#endif
-
     taskq_entry *entry = std::get<0>(*arg);
 
     worker& w = madi::current_worker();
@@ -537,16 +469,26 @@ bool worker::steal_by_rdmas()
         // switch to the stolen task
         MADI_DPUTSB2("resuming a stolen task");
 
-#if MADI_ENABLE_STEAL_PROF
-        tsc_t t = rdtsc();
-#else
-        tsc_t t = 0;
-#endif
+        if (stolen_entry.stack_top == 0) {
+            // the stack frame is in the uni-address region
+            std::tuple<taskq_entry *, uth_pid_t, taskque *>
+                arg(&stolen_entry, victim, taskq);
 
-        std::tuple<taskq_entry *, uth_pid_t, taskque *, tsc_t>
-            arg(&stolen_entry, victim, taskq, t);
+            suspend(resume_remote_context, &arg);
+        } else {
+            // no need to protect the taskq lock until the stack copy is completed
+            // because the stack has already been evacuated from the uni-address region
+            uth_comm& c = madi::proc().com();
+            taskq->unlock(c, victim);
 
-        suspend(resume_remote_context, &arg);
+            suspended_entry se;
+            se.base      = stolen_entry.frame_base;
+            se.size      = stolen_entry.frame_size;
+            se.pid       = stolen_entry.pid;
+            se.stack_top = stolen_entry.stack_top;
+
+            suspend(resume_remote_evacuated_context, &se);
+        }
     }
 
     return success;

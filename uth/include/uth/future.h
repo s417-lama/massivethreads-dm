@@ -14,7 +14,7 @@ namespace madi {
 namespace madm {
 namespace uth {
 
-    template <class T>
+    template <class T, int NDEPS>
     class future {
         friend class madi::future_pool;
     private:
@@ -25,14 +25,14 @@ namespace uth {
         future();
         ~future() = default;
 
-        static future<T> make();
-        static future<T> make(madi::worker& w);
+        static future<T, NDEPS> make();
+        static future<T, NDEPS> make(madi::worker& w);
 
         future& operator=(const future&) = default;
 
         void set(T& value);
 
-        T get();
+        T get(int dep_id);
 
     private:
         future(int id, madi::uth_pid_t pid);
@@ -59,11 +59,11 @@ namespace madi {
             MAX_ENTRY_BITS = 16,
         };
 
-        template <class T>
+        template <class T, int NDEPS>
         struct entry {
             T value;
-            int resume_flag; // 0/1/2: resume flag, 3/4: freed
-            suspended_entry s_entry;
+            int resume_flags[NDEPS]; // 0/1/2: resume flag, 3/4: freed
+            suspended_entry s_entries[NDEPS];
         };
 
         int locally_freed_val_  = 3;
@@ -87,28 +87,34 @@ namespace madi {
         void initialize(uth_comm& c, size_t n_entries);
         void finalize(uth_comm& c);
 
-        template <class T>
-        madm::uth::future<T> get();
+        template <class T, int NDEPS>
+        madm::uth::future<T, NDEPS> get();
 
-        template <class T>
-        bool fill(madm::uth::future<T> f, T& value, bool pop_succeed,
-                  suspended_entry *se);
+        template <class T, int NDEPS>
+        void fill(madm::uth::future<T, NDEPS> f, T& value,
+                  bool parent_popped, suspended_entry *ses);
 
-        template <class T>
-        bool sync(madm::uth::future<T> f, T *value);
+        template <class T, int NDEPS>
+        bool sync(madm::uth::future<T, NDEPS> f, T *value, int dep_id);
 
-        template <class T>
-        bool sync_suspended(madm::uth::future<T> f, suspended_entry se);
+        template <class T, int NDEPS>
+        bool sync_suspended(madm::uth::future<T, NDEPS> f,
+                            suspended_entry se, int dep_id);
 
-        template <class T>
-        void sync_resume(madm::uth::future<T> f, T *value);
+        template <class T, int NDEPS>
+        void sync_resume(madm::uth::future<T, NDEPS> f, T *value, int dep_id);
+
+        void discard_all_futures();
 
     private:
-        template <class T>
+        template <class T, int NDEPS>
         void reset(int id);
 
-        template <class T>
-        void return_future_id(madm::uth::future<T> f);
+        template <class T, int NDEPS>
+        void return_future_id(madm::uth::future<T, NDEPS> f, int dep_id);
+
+        template <class T, int NDEPS>
+        bool is_freed_local(entry<T, NDEPS> *e);
     };
 
 }
