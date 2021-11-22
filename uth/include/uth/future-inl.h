@@ -499,10 +499,15 @@ namespace madi {
 
     inline void future_pool::discard_all_futures()
     {
+        uth_comm& c = madi::proc().com();
+        uth_pid_t me = c.get_pid();
+
         for (size_t idx = 0; idx < MAX_ENTRY_BITS; idx++) {
             id_pools_[idx].clear();
             for (int id : all_allocated_ids_[idx]) {
                 id_pools_[idx].push_back(id);
+                size_t size = 1 << idx;
+                memset(remote_bufs_[me] + id, 0, size);
             }
         }
     }
