@@ -33,6 +33,12 @@ namespace uth {
     }
 
     template <class T, int NDEPS>
+    void thread<T, NDEPS>::discard(int dep_id)
+    {
+        return future_.discard(dep_id);
+    }
+
+    template <class T, int NDEPS>
     template <class F, class... Args>
     void thread<T, NDEPS>::start(future<T, NDEPS> fut, F f, Args... args)
     {

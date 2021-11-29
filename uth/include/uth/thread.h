@@ -24,6 +24,8 @@ namespace uth {
 
         T join(int dep_id = 0);
 
+        void discard(int dep_id = 0);
+
     private:
         template <class F, class... Args>
         static void start(future<T, NDEPS> fut, F f, Args... args);

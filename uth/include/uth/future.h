@@ -34,6 +34,8 @@ namespace uth {
 
         T get(int dep_id);
 
+        void discard(int dep_id);
+
     private:
         future(int id, madi::uth_pid_t pid);
     };
@@ -62,12 +64,12 @@ namespace madi {
         template <class T, int NDEPS>
         struct entry {
             T value;
-            int resume_flags[NDEPS]; // 0/1/2: resume flag, 3/4: freed
+            int resume_flags[NDEPS]; // 0/1/2: resume flag, 417/418: freed
             suspended_entry s_entries[NDEPS];
         };
 
-        int locally_freed_val_  = 3;
-        int remotely_freed_val_ = 4;
+        int locally_freed_val_  = 417;
+        int remotely_freed_val_ = 418;
 
         int ptr_;
         int buf_size_;
@@ -103,6 +105,9 @@ namespace madi {
 
         template <class T, int NDEPS>
         void sync_resume(madm::uth::future<T, NDEPS> f, T *value, int dep_id);
+
+        template <class T, int NDEPS>
+        void discard(madm::uth::future<T, NDEPS> f, int dep_id);
 
         void discard_all_futures();
 

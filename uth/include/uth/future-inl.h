@@ -193,6 +193,13 @@ namespace uth {
         return value;
     }
 
+    template <class T, int NDEPS>
+    inline void future<T, NDEPS>::discard(int dep_id)
+    {
+        madi::worker& w = madi::current_worker();
+        w.fpool().discard(*this, dep_id);
+    }
+
 }
 }
 
@@ -332,10 +339,11 @@ namespace madi {
             }
 
             for (int d = 0; d < NDEPS; d++) {
-                if (c.fetch_and_add(&e->resume_flags[d], 1, pid) == 0) {
+                int flag = c.fetch_and_add(&e->resume_flags[d], 1, pid);
+                if (flag == 0) {
                     // the parent has not reached the join point
                     ses[d].stack_top = 0;
-                } else {
+                } else if (flag == 1) {
                     // the parent has already reached the join point and suspended
                     if (pid == me) {
                         ses[d] = e->s_entries[d];
@@ -351,6 +359,10 @@ namespace madi {
                         forward_ret_ = true;
                         *((T*)forward_buf_) = value;
                     }
+                } else if (flag == 2) {
+                    // this future has been discarded
+                    ses[d].stack_top = 0;
+                    return_future_id(f, d);
                 }
             }
         }
@@ -495,6 +507,22 @@ namespace madi {
         }
 
         return_future_id(f, dep_id);
+    }
+
+    template <class T, int NDEPS>
+    inline void future_pool::discard(madm::uth::future<T, NDEPS> f, int dep_id)
+    {
+        uth_comm& c = madi::proc().com();
+        int fid = f.id_;
+        uth_pid_t pid = f.pid_;
+
+        entry<T, NDEPS> *e = (entry<T, NDEPS> *)(remote_bufs_[pid] + fid);
+
+        // resume_flag = 2 means it is discarded
+        if (c.fetch_and_add(&e->resume_flags[dep_id], 2, pid) == 1) {
+            // the future has been completed
+            return_future_id(f, dep_id);
+        }
     }
 
     inline void future_pool::discard_all_futures()
