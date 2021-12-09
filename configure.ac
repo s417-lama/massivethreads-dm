@@ -157,11 +157,21 @@ AC_ARG_ENABLE([logger],
               [AS_HELP_STRING([--enable-logger],
                               [Enable logger. Default: no])],
               [case "${enableval}" in
-                 yes) enable_logger=1 ;;
-                 no)  enable_logger=0 ;;
+                 yes) disable_logger=0 ;;
+                 no)  disable_logger=1 ;;
                esac],
-              [enable_logger=0])
-AC_DEFINE_UNQUOTED([MADI_ENABLE_LOGGER], [$enable_logger], [Enable logger])
+              [disable_logger=1])
+AC_DEFINE_UNQUOTED([MADI_LOGGER_DISABLE], [$disable_logger], [Disable logger])
+
+AC_ARG_ENABLE([logger-trace],
+              [AS_HELP_STRING([--enable-logger-trace],
+                              [Enable tracing of each event in logger. Default: yes])],
+              [case "${enableval}" in
+                 yes) disable_trace=0 ;;
+                 no)  disable_trace=1 ;;
+               esac],
+              [disable_trace=0])
+AC_DEFINE_UNQUOTED([MADI_LOGGER_DISABLE_TRACE], [$disable_trace], [Disable trace])
 
 AC_ARG_WITH([logger-enabled-kinds],
             [AS_HELP_STRING([--with-logger-enabled-kinds="KIND1 KIND2 ..."],

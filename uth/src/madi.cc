@@ -21,7 +21,7 @@ namespace madi {
 
     void barrier()
     {
-        logger::checkpoint<logger::kind::THREAD>();
+        logger::checkpoint<logger::kind::WORKER_BUSY>();
 
         uth_comm& c = madi::proc().com();
         worker& w = madi::current_worker();
@@ -32,7 +32,7 @@ namespace madi {
         // update max stack usage
         g_prof->max_stack_usage = w.max_stack_usage();
 
-        logger::checkpoint<logger::kind::SCHED>();
+        logger::checkpoint<logger::kind::WORKER_SCHED>();
     }
 
     void native_barrier()

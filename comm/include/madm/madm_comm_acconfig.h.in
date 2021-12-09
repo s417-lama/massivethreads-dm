@@ -126,14 +126,17 @@
 /* Debug Level */
 #undef MADI_DEBUG_LEVEL
 
-/* Enable logger */
-#undef MADI_ENABLE_LOGGER
-
 /* Enable polling */
 #undef MADI_ENABLE_POLLING
 
+/* Disable logger */
+#undef MADI_LOGGER_DISABLE
+
 /* Disabled kinds for logger */
 #undef MADI_LOGGER_DISABLED_KINDS
+
+/* Disable trace */
+#undef MADI_LOGGER_DISABLE_TRACE
 
 /* Enabled kinds for logger */
 #undef MADI_LOGGER_ENABLED_KINDS

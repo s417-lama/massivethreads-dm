@@ -188,13 +188,6 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
                  frame_base, frame_base + frame_size, frame_size);
 
-#if MADI_ENABLE_LOGGER
-    if (w.get_logger_begin_data() != NULL) {
-        logger::end_event<logger::kind::WORKER_RESUME_SUSPENDED>(w.get_logger_begin_data());
-        w.set_logger_begin_data(NULL);
-    }
-#endif
-
     madi_resume_context(ctx);
 }
 
@@ -221,13 +214,6 @@ void madi_worker_do_resume_remote_suspended(void *p0, void *p1, void *p2, void *
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
                  stack_top, stack_top + frame_size, frame_size);
 
-#if MADI_ENABLE_LOGGER
-    if (w.get_logger_begin_data() != NULL) {
-        logger::end_event<logger::kind::WORKER_RESUME_SUSPENDED>(w.get_logger_begin_data());
-        w.set_logger_begin_data(NULL);
-    }
-#endif
-
     context* ctx = (context*)stack_top;
     madi_resume_context(ctx);
 }
@@ -250,9 +236,6 @@ void madi_worker_do_resume_remote_context_1(uth_comm& c,
 
     MADI_DPUTSR1("resuming  [%p, %p) (size = %zu) (stolen)",
                  frame_base, frame_base + frame_size, frame_size);
-
-    logger::end_event<logger::kind::WORKER_RESUME_STOLEN>(
-            madi::current_worker().get_logger_begin_data(), victim);
 
     // resume the context of the stolen thread
     madi_resume_context(ctx);
@@ -450,11 +433,7 @@ bool worker::steal_by_rdmas()
     taskq_entry& stolen_entry = *taskq_entry_buf_;
     taskque *taskq;
 
-    logger::begin_data bd = logger::begin_event<logger::kind::WORKER_TRY_STEAL>();
-
     bool success = steal_with_lock(&stolen_entry, &victim, &taskq);
-
-    logger::end_event<logger::kind::WORKER_TRY_STEAL>(bd, victim);
 
     if (success) {
         // next_steal() is called when stolen thread resumed.
@@ -464,7 +443,7 @@ bool worker::steal_by_rdmas()
     }
 
     if (success) {
-        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_STOLEN>();
+        logger::checkpoint<logger::kind::WORKER_SCHED>();
 
         // switch to the stolen task
         MADI_DPUTSB2("resuming a stolen task");

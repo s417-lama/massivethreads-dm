@@ -71,8 +71,6 @@ namespace madi {
 
         saved_context* suspended_threads_ = NULL;
 
-        logger::begin_data bd_resume_;
-
     public:
         worker();
         ~worker();
@@ -114,9 +112,6 @@ namespace madi {
 
         template <class T> T * get_worker_local()
         { return reinterpret_cast<T *>(wls_); }
-
-        logger::begin_data get_logger_begin_data() const { return bd_resume_; }
-        void set_logger_begin_data(logger::begin_data bd) { bd_resume_ = bd; }
 
         bool is_main_task() { return is_main_task_; }
 

@@ -792,6 +792,7 @@ with_madi_debug_level
 with_comm_layer
 enable_polling
 enable_logger
+enable_logger_trace
 with_logger_enabled_kinds
 with_logger_disabled_kinds
 with_gasnet
@@ -1465,6 +1466,7 @@ Optional Features:
   --enable-polling        Enable polling for communication progress. Default:
                           no
   --enable-logger         Enable logger. Default: no
+  --enable-logger-trace   Enable tracing of each event in logger. Default: yes
   --enable-shared[=PKGS]  build shared libraries [default=no]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
@@ -7469,16 +7471,32 @@ _ACEOF
 # Check whether --enable-logger was given.
 if test "${enable_logger+set}" = set; then :
   enableval=$enable_logger; case "${enableval}" in
-                 yes) enable_logger=1 ;;
-                 no)  enable_logger=0 ;;
+                 yes) disable_logger=0 ;;
+                 no)  disable_logger=1 ;;
                esac
 else
-  enable_logger=0
+  disable_logger=1
 fi
 
 
 cat >>confdefs.h <<_ACEOF
-#define MADI_ENABLE_LOGGER $enable_logger
+#define MADI_LOGGER_DISABLE $disable_logger
+_ACEOF
+
+
+# Check whether --enable-logger-trace was given.
+if test "${enable_logger_trace+set}" = set; then :
+  enableval=$enable_logger_trace; case "${enableval}" in
+                 yes) disable_trace=0 ;;
+                 no)  disable_trace=1 ;;
+               esac
+else
+  disable_trace=0
+fi
+
+
+cat >>confdefs.h <<_ACEOF
+#define MADI_LOGGER_DISABLE_TRACE $disable_trace
 _ACEOF
 
 

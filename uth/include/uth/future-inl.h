@@ -63,6 +63,9 @@ namespace uth {
 
         if (parent_popped) {
             MADI_DPUTS3("pop context %p", &entry->frame_base);
+
+            madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_DIE>();
+
             // just return to the parent
         } else {
             // call an event handler when parent thread is stolen
@@ -91,9 +94,11 @@ namespace uth {
                     se.pid       = entry->pid;
                     se.stack_top = entry->stack_top;
 
+                    madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_DIE>();
                     w.resume_remote_suspended(se);
                 } else {
                     // move to the scheduler
+                    madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_DIE>();
                     w.resume_main_task();
                 }
             } else {
@@ -118,6 +123,7 @@ namespace uth {
                 }
 
                 // resume the first waiter
+                madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_DIE>();
                 w.resume_remote_suspended(*next_se);
             }
         }
@@ -141,6 +147,9 @@ namespace uth {
             w.resume(sctx);
         } else {
             madi::taskq_entry *entry = w.taskq().pop(c);
+
+            madi::logger::checkpoint<madi::logger::kind::WORKER_JOIN_UNRESOLVED>();
+
             if (entry != NULL) {
                 if (entry->stack_top == 0) {
                     // the parent task is popped
@@ -168,7 +177,7 @@ namespace uth {
     template <class T, int NDEPS>
     inline T future<T, NDEPS>::get(int dep_id)
     {
-        madi::logger::checkpoint<madi::logger::kind::THREAD>();
+        madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
         madi::worker& w = madi::current_worker();
 
@@ -188,7 +197,7 @@ namespace uth {
             }
         }
 
-        madi::logger::checkpoint<madi::logger::kind::SCHED>();
+        madi::logger::checkpoint<madi::logger::kind::WORKER_JOIN_RESOLVED>();
 
         return value;
     }

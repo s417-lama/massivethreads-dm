@@ -270,6 +270,7 @@ namespace madi {
     void worker::fork(F f, Args... args)
     {
         worker& w0 = *this;
+        uth_pid_t rank0 = proc().com().get_pid();
 
         context *prev_ctx = w0.cur_ctx_;
 
@@ -292,6 +293,7 @@ namespace madi {
         MADI_DPUTS3("&prev_ctx = %p", &prev_ctx);
 
         worker& w1 = madi::current_worker();
+        uth_pid_t rank1 = proc().com().get_pid();
 
         MADI_DPUTS3("&madi_process = %p", &madi_process);
 
@@ -316,6 +318,14 @@ namespace madi {
             MADI_DPUTSR1("resume done: %d", g_prof->steals_idx);
         }
 #endif
+
+        if (rank0 == rank1) {
+            // not stolen
+            logger::checkpoint<logger::kind::WORKER_RESUME_PARENT>();
+        } else {
+            // stolen
+            logger::checkpoint<logger::kind::WORKER_RESUME_STOLEN>();
+        }
     }
 
     inline void worker::exit()
@@ -325,8 +335,6 @@ namespace madi {
 
     inline void worker::collect_suspended_freed_remotely()
     {
-        uth_comm& c = madi::proc().com();
-
         saved_context* sctx = suspended_threads_;
         while (sctx) {
             if (sctx->header.is_freed == freed_val_) {
@@ -463,8 +471,6 @@ namespace madi {
 
     inline void worker::resume_remote_suspended(suspended_entry se)
     {
-        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_SUSPENDED>();
-
         uint8_t *next_stack_top = se.stack_top - 128;
         MADI_EXECUTE_ON_STACK(madi_worker_do_resume_remote_suspended,
                               se.base, se.size, se.stack_top, se.pid,
@@ -473,8 +479,6 @@ namespace madi {
 
     inline void worker::resume_main_task()
     {
-        bd_resume_ = logger::begin_event<logger::kind::WORKER_RESUME_SUSPENDED>();
-
         MADI_ASSERT(!is_main_task_ && main_sctx_ != NULL);
 
         MADI_DPUTS1("a main task is resuming");

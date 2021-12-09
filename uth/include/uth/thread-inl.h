@@ -16,14 +16,12 @@ namespace uth {
     thread<T, NDEPS>::thread(const F& f, Args... args)
         : future_()
     {
-        madi::logger::checkpoint<madi::logger::kind::THREAD>();
+        madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
         madi::worker& w = madi::current_worker();
         future_ = future<T, NDEPS>::make(w);
 
         w.fork(start<F, Args...>, future_, f, args...);
-
-        madi::logger::checkpoint<madi::logger::kind::SCHED>();
     }
 
     template <class T, int NDEPS>
@@ -42,11 +40,11 @@ namespace uth {
     template <class F, class... Args>
     void thread<T, NDEPS>::start(future<T, NDEPS> fut, F f, Args... args)
     {
-        madi::logger::checkpoint<madi::logger::kind::SCHED>();
+        madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_FORK>();
 
         T value = f(args...);
 
-        madi::logger::checkpoint<madi::logger::kind::THREAD>();
+        madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
         fut.set(value);
     }
@@ -66,14 +64,12 @@ namespace uth {
         explicit thread(const F& f, Args... args)
             : future_()
         {
-            madi::logger::checkpoint<madi::logger::kind::THREAD>();
+            madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
             madi::worker& w = madi::current_worker();
             future_ = future<long, NDEPS>::make(w);
 
             w.fork(start<F, Args...>, future_, f, args...);
-
-            madi::logger::checkpoint<madi::logger::kind::SCHED>();
         }
 
         // copy and move constrs
@@ -86,11 +82,11 @@ namespace uth {
         template <class F, class... Args>
         static void start(future<long, NDEPS> fut, F f, Args... args)
         {
-            madi::logger::checkpoint<madi::logger::kind::SCHED>();
+            madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_FORK>();
 
             f(args...);
 
-            madi::logger::checkpoint<madi::logger::kind::THREAD>();
+            madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
             long value = 0;
             fut.set(value);
@@ -100,12 +96,10 @@ namespace uth {
     template <class F, class... Args>
     static void fork(F&& f, Args... args)
     {
-        madi::logger::checkpoint<madi::logger::kind::THREAD>();
+        madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
         madi::worker& w = madi::current_worker();
         w.fork(f, args...);
-
-        madi::logger::checkpoint<madi::logger::kind::SCHED>();
     }
 
     template <class F, class... Args>

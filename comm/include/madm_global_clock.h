@@ -145,7 +145,7 @@ namespace madi {
                 MPI_Comm_rank(gc.inter_comm_, &gc.inter_rank_);
                 MPI_Comm_size(gc.inter_comm_, &gc.inter_nproc_);
 
-#if MADI_ENABLE_LOGGER
+#if !(MADI_LOGGER_DISABLE || MADI_LOGGER_DISABLE_TRACE)
                 sync();
 #endif
 
