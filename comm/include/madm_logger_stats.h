@@ -26,6 +26,8 @@ namespace madi {
         bool     stat_print_per_rank_;
         uint64_t stat_acc_[(size_t)kind::__N_KINDS];
         uint64_t stat_acc_total_[(size_t)kind::__N_KINDS];
+        uint64_t stat_count_[(size_t)kind::__N_KINDS];
+        uint64_t stat_count_total_[(size_t)kind::__N_KINDS];
 
         static inline logger_stats& get_instance_() {
             static logger_stats my_instance;
@@ -38,13 +40,15 @@ namespace madi {
                 if (lgr.stat_print_per_rank_) {
                     uint64_t acc = lgr.stat_acc_[(size_t)k];
                     uint64_t acc_total = lgr.t_end_ - lgr.t_begin_;
-                    printf("(Rank %3d) %-23s : %10.6f %% ( %15ld ns / %15ld ns )\n",
-                           rank, logger_kind::kind_name(k), (double)acc / acc_total * 100, acc, acc_total);
+                    uint64_t count = lgr.stat_count_[(size_t)k];
+                    printf("(Rank %3d) %-23s : %10.6f %% ( %15ld ns / %15ld ns ) count: %8ld\n",
+                           rank, logger_kind::kind_name(k), (double)acc / acc_total * 100, acc, acc_total, count);
                 } else {
                     uint64_t acc = lgr.stat_acc_total_[(size_t)k];
                     uint64_t acc_total = (lgr.t_end_ - lgr.t_begin_) * lgr.nproc_;
-                    printf("  %-23s : %10.6f %% ( %15ld ns / %15ld ns )\n",
-                           logger_kind::kind_name(k), (double)acc / acc_total * 100, acc, acc_total);
+                    uint64_t count = lgr.stat_count_total_[(size_t)k];
+                    printf("  %-23s : %10.6f %% ( %15ld ns / %15ld ns ) count: %8ld\n",
+                           logger_kind::kind_name(k), (double)acc / acc_total * 100, acc, acc_total, count);
                 }
             }
         }
@@ -54,6 +58,8 @@ namespace madi {
             for (size_t k = 0; k < (size_t)kind::__N_KINDS; k++) {
                 lgr.stat_acc_[k] = 0;
                 lgr.stat_acc_total_[k] = 0;
+                lgr.stat_count_[k] = 0;
+                lgr.stat_count_total_[k] = 0;
             }
         }
 
@@ -61,6 +67,7 @@ namespace madi {
         static void acc_stat_(uint64_t t0, uint64_t t1) {
             logger_stats& lgr = get_instance_();
             lgr.stat_acc_[(size_t)k] += t1 - t0;
+            lgr.stat_count_[(size_t)k]++;
         }
 
         static void print_stat_(int rank) {
@@ -97,14 +104,20 @@ namespace madi {
                     for (int i = 1; i < lgr.nproc_; i++) {
                         MPI_Recv(lgr.stat_acc_, (size_t)kind::__N_KINDS, MPI_UINT64_T,
                                  i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        MPI_Recv(lgr.stat_count_, (size_t)kind::__N_KINDS, MPI_UINT64_T,
+                                 i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                         print_stat_(i);
                     }
                 } else {
                     MPI_Send(lgr.stat_acc_, (size_t)kind::__N_KINDS, MPI_UINT64_T,
                              0, 0, MPI_COMM_WORLD);
+                    MPI_Send(lgr.stat_count_, (size_t)kind::__N_KINDS, MPI_UINT64_T,
+                             0, 0, MPI_COMM_WORLD);
                 }
             } else {
                 MPI_Reduce(lgr.stat_acc_, lgr.stat_acc_total_, (size_t)kind::__N_KINDS,
+                           MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+                MPI_Reduce(lgr.stat_count_, lgr.stat_count_total_, (size_t)kind::__N_KINDS,
                            MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
                 if (lgr.rank_ == 0) {
                     print_stat_(0);
