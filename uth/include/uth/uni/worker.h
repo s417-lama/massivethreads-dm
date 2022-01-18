@@ -46,7 +46,7 @@ namespace madi {
                                                     suspended_entry *se);
         friend void resume_remote_context(saved_context *sctx,
                                           std::tuple<taskq_entry *,
-                                          uth_pid_t, taskque *> *arg);
+                                          uth_pid_t, taskque *, logger::begin_data> *arg);
         friend void resume_remote_context_by_messages(saved_context *sctx,
                                                       steal_rep *rep);
 

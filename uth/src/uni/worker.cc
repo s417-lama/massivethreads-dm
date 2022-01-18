@@ -255,7 +255,8 @@ __attribute__((noinline))
 void madi_worker_do_resume_remote_context_1(uth_comm& c,
                                             uth_pid_t victim,
                                             taskque *taskq,
-                                            taskq_entry *entry)
+                                            taskq_entry *entry,
+                                            logger::begin_data bd)
 {
     MADI_UNUSED uint8_t *frame_base = (uint8_t *)entry->frame_base;
     MADI_UNUSED size_t frame_size = entry->frame_size;
@@ -266,6 +267,8 @@ void madi_worker_do_resume_remote_context_1(uth_comm& c,
     MADI_CONTEXT_PRINT(2, ctx);
 
     taskq->unlock(c, victim);
+
+    logger::end_event<logger::kind::STEAL_SUCCESS>(bd, victim);
 
     MADI_DPUTSR1("resuming  [%p, %p) (size = %zu) (stolen)",
                  frame_base, frame_base + frame_size, frame_size);
@@ -281,12 +284,13 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
     // data pointed from the parameter pointers may be corrupted
     // by stack copy, so we have to copy it to the current stack frame.
 
-    std::tuple<taskq_entry *, uth_pid_t, taskque *>& arg =
-        *(std::tuple<taskq_entry *, uth_pid_t, taskque *> *)p0;
+    std::tuple<taskq_entry *, uth_pid_t, taskque *, logger::begin_data>& arg =
+        *(std::tuple<taskq_entry *, uth_pid_t, taskque *, logger::begin_data> *)p0;
 
     taskq_entry entry = *std::get<0>(arg);
     uth_pid_t victim = std::get<1>(arg);
     taskque *taskq = std::get<2>(arg);
+    logger::begin_data bd = std::get<3>(arg);
 
     iso_space& ispace = madi::proc().ispace();
     uth_comm& c = madi::proc().com();
@@ -313,9 +317,14 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
         MADI_ASSERT(sp <= frame_base);
     });
 
+    logger::begin_data bd2 = logger::begin_event<logger::kind::STEAL_STACK_COPY>();
+
     c.reg_get(frame_base, frame_base, frame_size, victim);
 
-    madi_worker_do_resume_remote_context_1(c, victim, taskq, &entry);
+    logger::end_event<logger::kind::STEAL_STACK_COPY>(bd2, frame_size);
+
+    madi_worker_do_resume_remote_context_1(c, victim, taskq, &entry,
+                                           bd);
 }
 
 __attribute__((noinline))
@@ -442,7 +451,7 @@ void resume_remote_evacuated_context(saved_context *sctx,
 
 void resume_remote_context(saved_context *sctx,
                            std::tuple<taskq_entry *, uth_pid_t,
-                                      taskque *> *arg)
+                                      taskque *, logger::begin_data> *arg)
 {
     taskq_entry *entry = std::get<0>(*arg);
 
@@ -466,6 +475,8 @@ bool worker::steal_by_rdmas()
     taskq_entry& stolen_entry = *taskq_entry_buf_;
     taskque *taskq;
 
+    logger::begin_data bd = logger::begin_event<logger::kind::STEAL_SUCCESS>();
+
     bool success = steal_with_lock(&stolen_entry, &victim, &taskq);
 
     if (success) {
@@ -473,6 +484,7 @@ bool worker::steal_by_rdmas()
     } else {
         // do not record when a steal fails.
         //g_prof->next_steal();
+        logger::end_event<logger::kind::STEAL_FAIL>(bd, victim);
     }
 
     if (success) {
@@ -483,8 +495,8 @@ bool worker::steal_by_rdmas()
 
         if (stolen_entry.stack_top == 0) {
             // the stack frame is in the uni-address region
-            std::tuple<taskq_entry *, uth_pid_t, taskque *>
-                arg(&stolen_entry, victim, taskq);
+            std::tuple<taskq_entry *, uth_pid_t, taskque *, logger::begin_data>
+                arg(&stolen_entry, victim, taskq, bd);
 
             suspend(resume_remote_context, &arg);
         } else {

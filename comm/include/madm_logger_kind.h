@@ -39,6 +39,10 @@ namespace madi {
             COMM_MALLOC,
             COMM_FREE,
 
+            STEAL_SUCCESS,
+            STEAL_FAIL,
+            STEAL_STACK_COPY,
+
             OTHER,
             __N_KINDS,
         };
@@ -95,6 +99,10 @@ namespace madi {
                 case kind::COMM_POLL:               return "comm_poll";
                 case kind::COMM_MALLOC:             return "comm_malloc";
                 case kind::COMM_FREE:               return "comm_free";
+
+                case kind::STEAL_SUCCESS:           return "steal_success";
+                case kind::STEAL_FAIL:              return "steal_fail";
+                case kind::STEAL_STACK_COPY:        return "steal_stack_copy";
 
                 default:                            return "other";
             }
