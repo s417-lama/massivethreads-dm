@@ -41,7 +41,7 @@ namespace madi {
 
             STEAL_SUCCESS,
             STEAL_FAIL,
-            STEAL_STACK_COPY,
+            STEAL_TASK_COPY,
 
             OTHER,
             __N_KINDS,
@@ -102,7 +102,7 @@ namespace madi {
 
                 case kind::STEAL_SUCCESS:           return "steal_success";
                 case kind::STEAL_FAIL:              return "steal_fail";
-                case kind::STEAL_STACK_COPY:        return "steal_stack_copy";
+                case kind::STEAL_TASK_COPY:         return "steal_task_copy";
 
                 default:                            return "other";
             }

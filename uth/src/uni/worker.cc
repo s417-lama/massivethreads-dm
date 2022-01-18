@@ -317,11 +317,11 @@ void madi_worker_do_resume_remote_context(void *p0, void *p1, void *p2,
         MADI_ASSERT(sp <= frame_base);
     });
 
-    logger::begin_data bd2 = logger::begin_event<logger::kind::STEAL_STACK_COPY>();
+    logger::begin_data bd2 = logger::begin_event<logger::kind::STEAL_TASK_COPY>();
 
     c.reg_get(frame_base, frame_base, frame_size, victim);
 
-    logger::end_event<logger::kind::STEAL_STACK_COPY>(bd2, frame_size);
+    logger::end_event<logger::kind::STEAL_TASK_COPY>(bd2, frame_size);
 
     madi_worker_do_resume_remote_context_1(c, victim, taskq, &entry,
                                            bd);
