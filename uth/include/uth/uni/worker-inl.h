@@ -335,6 +335,9 @@ namespace madi {
 
     inline void worker::collect_suspended_freed_remotely()
     {
+        logger::begin_data bd = logger::begin_event<logger::kind::COLLECT_SUSPENDED>();
+        uint64_t count = 0;
+
         saved_context* sctx = suspended_threads_;
         while (sctx) {
             if (sctx->header.is_freed == freed_val_) {
@@ -344,7 +347,10 @@ namespace madi {
             } else {
                 sctx = sctx->header.next;
             }
+            count++;
         }
+
+        logger::end_event<logger::kind::COLLECT_SUSPENDED>(bd, count);
     }
 
     inline saved_context* worker::alloc_suspended(size_t size)

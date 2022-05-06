@@ -288,6 +288,8 @@ namespace madi {
         int real_size = 1 << idx;
 
         if (id_pools_[idx].empty()) {
+            logger::begin_data bd2 = logger::begin_event<logger::kind::COLLECT_FUTURE>();
+
             // collect freed future ids
             for (int id : all_allocated_ids_[idx]) {
                 // TODO: it is not guaranteed that all of the allocated ids have the
@@ -301,6 +303,8 @@ namespace madi {
                     }
                 }
             }
+
+            logger::end_event<logger::kind::COLLECT_FUTURE>(bd2, all_allocated_ids_[idx].size());
         }
 
         int id;

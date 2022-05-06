@@ -39,6 +39,9 @@ namespace madi {
             COMM_MALLOC,
             COMM_FREE,
 
+            COLLECT_FUTURE,
+            COLLECT_SUSPENDED,
+
             STEAL_SUCCESS,
             STEAL_FAIL,
             STEAL_TASK_COPY,
@@ -103,6 +106,9 @@ namespace madi {
                 case kind::STEAL_SUCCESS:           return "steal_success";
                 case kind::STEAL_FAIL:              return "steal_fail";
                 case kind::STEAL_TASK_COPY:         return "steal_task_copy";
+
+                case kind::COLLECT_FUTURE:          return "collect_future";
+                case kind::COLLECT_SUSPENDED:       return "collect_suspended";
 
                 default:                            return "other";
             }

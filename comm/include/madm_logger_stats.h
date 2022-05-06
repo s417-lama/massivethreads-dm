@@ -49,7 +49,7 @@ namespace madi {
                            rank, logger_kind::kind_name(k), (double)acc / acc_total * 100, acc, acc_total, count, count == 0 ? 0 : (acc / count));
                     if (k == kind::STEAL_TASK_COPY) {
                         printf("(Rank %3d) %-23s : %8ld bytes ( %8ld / %8ld )\n",
-                               rank, "steal_task_size", lgr.stat_task_size_acc_ / count, lgr.stat_task_size_acc_, count);
+                               rank, "steal_task_size", count == 0 ? 0 : (lgr.stat_task_size_acc_ / count), lgr.stat_task_size_acc_, count);
                     }
                 } else {
                     uint64_t acc = lgr.stat_acc_total_[(size_t)k];
@@ -59,7 +59,7 @@ namespace madi {
                            logger_kind::kind_name(k), (double)acc / acc_total * 100, acc, acc_total, count, count == 0 ? 0 : (acc / count));
                     if (k == kind::STEAL_TASK_COPY) {
                         printf("  %-23s : %8ld bytes ( %8ld / %8ld )\n",
-                               "steal_task_size", lgr.stat_task_size_acc_total_ / count, lgr.stat_task_size_acc_total_, count);
+                               "steal_task_size", count == 0 ? 0 : (lgr.stat_task_size_acc_total_ / count), lgr.stat_task_size_acc_total_, count);
                     }
                 }
             }
