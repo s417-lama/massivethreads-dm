@@ -87,7 +87,7 @@ namespace madi {
         void notify_done();
 
         template <class F, class... Args>
-        void fork(F f, Args... args);
+        bool fork(F f, Args... args);
 
         void exit();
 

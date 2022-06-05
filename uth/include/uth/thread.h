@@ -12,6 +12,7 @@ namespace uth {
     class thread {
         // shared object
         future<T, NDEPS> future_;
+        bool synched_;
 
     public:
         // constr/destr with no thread
@@ -25,6 +26,8 @@ namespace uth {
         T join(int dep_id = 0);
 
         void discard(int dep_id = 0);
+
+        bool synched();
 
     private:
         template <class F, class... Args>

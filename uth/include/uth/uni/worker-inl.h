@@ -267,7 +267,7 @@ namespace madi {
     }
 
     template <class F, class... Args>
-    void worker::fork(F f, Args... args)
+    bool worker::fork(F f, Args... args)
     {
         worker& w0 = *this;
         uth_pid_t rank0 = proc().com().get_pid();
@@ -322,9 +322,11 @@ namespace madi {
         if (rank0 == rank1) {
             // not stolen
             logger::checkpoint<logger::kind::WORKER_RESUME_PARENT>();
+            return true;
         } else {
             // stolen
             logger::checkpoint<logger::kind::WORKER_RESUME_STOLEN>();
+            return false;
         }
     }
 

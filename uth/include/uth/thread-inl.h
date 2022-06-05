@@ -9,7 +9,7 @@ namespace madm {
 namespace uth {
 
     template <class T, int NDEPS>
-    thread<T, NDEPS>::thread() : future_() {}
+    thread<T, NDEPS>::thread() : future_(), synched_(false) {}
 
     template <class T, int NDEPS>
     template <class F, class... Args>
@@ -21,19 +21,27 @@ namespace uth {
         madi::worker& w = madi::current_worker();
         future_ = future<T, NDEPS>::make(w);
 
-        w.fork(start<F, Args...>, future_, f, args...);
+        synched_ = w.fork(start<F, Args...>, future_, f, args...);
     }
 
     template <class T, int NDEPS>
     T thread<T, NDEPS>::join(int dep_id)
     {
-        return future_.get(dep_id);
+        T ret = future_.get(dep_id);
+        synched_ = true;
+        return ret;
     }
 
     template <class T, int NDEPS>
     void thread<T, NDEPS>::discard(int dep_id)
     {
         return future_.discard(dep_id);
+    }
+
+    template <class T, int NDEPS>
+    bool thread<T, NDEPS>::synched()
+    {
+        return synched_;
     }
 
     template <class T, int NDEPS>
@@ -53,6 +61,7 @@ namespace uth {
     class thread<void, NDEPS> {
     private:
         future<long, NDEPS> future_;
+        bool synched_;
 
     public:
         // constr/destr with no thread
@@ -69,14 +78,16 @@ namespace uth {
             madi::worker& w = madi::current_worker();
             future_ = future<long, NDEPS>::make(w);
 
-            w.fork(start<F, Args...>, future_, f, args...);
+            synched_ = w.fork(start<F, Args...>, future_, f, args...);
         }
 
         // copy and move constrs
         thread& operator=(const thread&) = delete;
         thread(thread&& other);  // TODO: implement
 
-        void join(int dep_id = 0) { future_.get(dep_id); }
+        void join(int dep_id = 0) { future_.get(dep_id); synched_ = true; }
+        void discard(int dep_id) { return future_.discard(dep_id); }
+        bool synched() { return synched_; }
 
     private:
         template <class F, class... Args>
