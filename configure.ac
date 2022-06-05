@@ -91,7 +91,7 @@ esac
 # The macro below automatically adds -std=gnu++14
 #
 
-AX_CXX_COMPILE_STDCXX(14, [ext], [mandatory])
+AX_CXX_COMPILE_STDCXX(17, [ext], [mandatory])
 
 
 #

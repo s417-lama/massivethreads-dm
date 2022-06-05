@@ -4,31 +4,45 @@
 #include "future.h"
 #include "future-inl.h"
 #include "uni/worker-inl.h"
+#include <tuple>
 
 namespace madm {
 namespace uth {
 
     template <class T, int NDEPS>
-    thread<T, NDEPS>::thread() : future_(), synched_(false) {}
+    thread<T, NDEPS>::thread() : future_() {}
 
     template <class T, int NDEPS>
     template <class F, class... Args>
     thread<T, NDEPS>::thread(const F& f, Args... args)
         : future_()
     {
+        spawn(f, args...);
+    }
+
+    template <class T, int NDEPS>
+    template <class F, class... Args>
+    bool thread<T, NDEPS>::spawn(const F& f, Args... args)
+    {
+        return spawn_aux(f, std::make_tuple(args...), []{});
+    }
+
+    template <class T, int NDEPS>
+    template <class F, class ArgsTuple, class Callback>
+    bool thread<T, NDEPS>::spawn_aux(const F& f, ArgsTuple args, Callback c)
+    {
         madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
         madi::worker& w = madi::current_worker();
         future_ = future<T, NDEPS>::make(w);
 
-        synched_ = w.fork(start<F, Args...>, future_, f, args...);
+        return w.fork(start<F, ArgsTuple>, future_, f, args);
     }
 
     template <class T, int NDEPS>
     T thread<T, NDEPS>::join(int dep_id)
     {
         T ret = future_.get(dep_id);
-        synched_ = true;
         return ret;
     }
 
@@ -39,18 +53,12 @@ namespace uth {
     }
 
     template <class T, int NDEPS>
-    bool thread<T, NDEPS>::synched()
-    {
-        return synched_;
-    }
-
-    template <class T, int NDEPS>
-    template <class F, class... Args>
-    void thread<T, NDEPS>::start(future<T, NDEPS> fut, F f, Args... args)
+    template <class F, class ArgsTuple>
+    void thread<T, NDEPS>::start(future<T, NDEPS> fut, F f, ArgsTuple args)
     {
         madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_FORK>();
 
-        T value = f(args...);
+        T value = std::apply(f, args);
 
         madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
@@ -61,7 +69,6 @@ namespace uth {
     class thread<void, NDEPS> {
     private:
         future<long, NDEPS> future_;
-        bool synched_;
 
     public:
         // constr/destr with no thread
@@ -73,29 +80,40 @@ namespace uth {
         explicit thread(const F& f, Args... args)
             : future_()
         {
+            spawn(f, args...);
+        }
+
+        template <class F, class... Args>
+        bool spawn(const F& f, Args... args)
+        {
+            return spawn_aux(f, std::make_tuple(args...), []{});
+        }
+
+        template <class F, class ArgsTuple, class Callback>
+        bool spawn_aux(const F& f, ArgsTuple args, Callback c)
+        {
             madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
             madi::worker& w = madi::current_worker();
             future_ = future<long, NDEPS>::make(w);
 
-            synched_ = w.fork(start<F, Args...>, future_, f, args...);
+            return w.fork(start<F, ArgsTuple>, future_, f, args);
         }
 
         // copy and move constrs
         thread& operator=(const thread&) = delete;
         thread(thread&& other);  // TODO: implement
 
-        void join(int dep_id = 0) { future_.get(dep_id); synched_ = true; }
+        void join(int dep_id = 0) { future_.get(dep_id); }
         void discard(int dep_id) { return future_.discard(dep_id); }
-        bool synched() { return synched_; }
 
     private:
-        template <class F, class... Args>
-        static void start(future<long, NDEPS> fut, F f, Args... args)
+        template <class F, class ArgsTuple>
+        static void start(future<long, NDEPS> fut, F f, ArgsTuple args)
         {
             madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_FORK>();
 
-            f(args...);
+            std::apply(f, args);
 
             madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 

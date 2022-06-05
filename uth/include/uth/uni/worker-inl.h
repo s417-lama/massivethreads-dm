@@ -201,12 +201,12 @@ namespace madi {
         - saved registers を pop
         - (suspend 関数から return)
     */
-    template <class F, class... Args>
+    template <class F, class ArgsTuple>
     void worker_do_fork(context *ctx_ptr, void *f_ptr, void *arg_ptr)
     {
         context& ctx = *ctx_ptr;
         F f = *(F *)f_ptr;
-        std::tuple<Args...> arg = *(std::tuple<Args...> *)arg_ptr;
+        ArgsTuple arg = *(ArgsTuple *)arg_ptr;
 
         MADI_CONTEXT_PRINT(3, &ctx);
         MADI_CONTEXT_ASSERT(&ctx);
@@ -261,13 +261,13 @@ namespace madi {
         MADI_DPUTS2("start (ctx = %p)", ctx_ptr);
 
         // execute a child thread
-        tuple_apply<void>::f<F, Args...>(f, arg);
+        std::apply(f, arg);
 
         MADI_DPUTS2("end (ctx = %p)", ctx_ptr);
     }
 
-    template <class F, class... Args>
-    bool worker::fork(F f, Args... args)
+    template <class F, class ArgsTuple>
+    bool worker::fork(F f, ArgsTuple args)
     {
         worker& w0 = *this;
         uth_pid_t rank0 = proc().com().get_pid();
@@ -281,13 +281,11 @@ namespace madi {
         MADI_CONTEXT_PRINT(3, prev_ctx);
         MADI_CONTEXT_ASSERT_WITHOUT_PARENT(prev_ctx);
 
-        void (*fp)(context *, void *, void *) = worker_do_fork<F, Args...>;
-
-        std::tuple<Args...> arg(args...);
+        void (*fp)(context *, void *, void *) = worker_do_fork<F, ArgsTuple>;
 
         // save the current context to the stack
         // (copy register values to the current stack)
-        MADI_SAVE_CONTEXT_WITH_CALL(prev_ctx, fp, (void *)&f, (void *)&arg);
+        MADI_SAVE_CONTEXT_WITH_CALL(prev_ctx, fp, (void *)&f, (void *)&args);
 
         MADI_DPUTS3("resumed: parent_ctx = %p", prev_ctx);
         MADI_DPUTS3("&prev_ctx = %p", &prev_ctx);

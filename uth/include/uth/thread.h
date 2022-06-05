@@ -23,6 +23,12 @@ namespace uth {
         template <class F, class... Args>
         explicit thread(const F& f, Args... args);
 
+        template <class F, class... Args>
+        void spawn(const F& f, Args... args);
+
+        template <class F, class ArgsTuple, class Callback>
+        void spawn_aux(const F& f, ArgsTuple args, Callback c);
+
         T join(int dep_id = 0);
 
         void discard(int dep_id = 0);

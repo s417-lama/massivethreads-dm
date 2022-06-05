@@ -26,7 +26,7 @@ namespace madi {
     inline void worker_do_start(context *ctx, void *arg0, void *arg1);
 
     class worker {
-        template <class F, class... Args>
+        template <class F, class ArgsTuple>
         friend void worker_do_fork(context *ctx_ptr,
                                    void *f_ptr, void *arg_ptr);
 
@@ -86,8 +86,8 @@ namespace madi {
 
         void notify_done();
 
-        template <class F, class... Args>
-        bool fork(F f, Args... args);
+        template <class F, class ArgsTuple>
+        bool fork(F f, ArgsTuple args);
 
         void exit();
 
