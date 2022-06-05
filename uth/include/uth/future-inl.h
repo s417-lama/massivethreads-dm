@@ -45,7 +45,8 @@ namespace uth {
     }
 
     template <class T, int NDEPS>
-    inline void future<T, NDEPS>::set(T& value)
+    template <class Callback>
+    inline void future<T, NDEPS>::set(T& value, Callback cb_on_die)
     {
         if (id_ < 0 || pid_ == madi::PID_INVALID)
             MADI_DIE("invalid future");
@@ -60,6 +61,8 @@ namespace uth {
 
         madi::suspended_entry ses[NDEPS];
         w.fpool().fill(*this, value, parent_popped, ses);
+
+        cb_on_die(parent_popped);
 
         if (parent_popped) {
             MADI_DPUTS3("pop context %p", &entry->frame_base);
@@ -175,7 +178,8 @@ namespace uth {
     }
 
     template <class T, int NDEPS>
-    inline T future<T, NDEPS>::get(int dep_id)
+    template <class Callback>
+    inline T future<T, NDEPS>::get(int dep_id, Callback cb_on_block)
     {
         madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
@@ -184,10 +188,13 @@ namespace uth {
         T value;
         if (w.is_main_task()) {
             while (!w.fpool().sync(*this, &value, dep_id)) {
+                cb_on_block();
                 w.do_scheduler_work();
             }
         } else {
             if (!w.fpool().sync(*this, &value, dep_id)) {
+                cb_on_block();
+
                 w.suspend(future_join_suspended<T, NDEPS>, *this, dep_id);
 
                 // worker can change after suspend

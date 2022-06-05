@@ -23,32 +23,28 @@ namespace uth {
         template <class F, class... Args>
         explicit thread(const F& f, Args... args);
 
+        // returns SYNCHED flag (false if stolen)
         template <class F, class... Args>
-        void spawn(const F& f, Args... args);
+        bool spawn(const F& f, Args... args);
 
         template <class F, class ArgsTuple, class Callback>
-        void spawn_aux(const F& f, ArgsTuple args, Callback c);
+        bool spawn_aux(const F& f, ArgsTuple args, Callback cb_on_die);
 
         T join(int dep_id = 0);
+
+        template <class Callback>
+        T join_aux(int dep_id, Callback cb_on_block);
 
         void discard(int dep_id = 0);
 
         bool synched();
 
     private:
-        template <class F, class... Args>
-        static void start(future<T, NDEPS> fut, F f, Args... args);
+        template <class F, class ArgsTuple, class Callback>
+        static void start(future<T, NDEPS> fut, F f, ArgsTuple args, Callback cb_on_die);
     };
 
     typedef madi::saved_context saved_context;
-
-    template <class F, class... Args>
-    static void fork(F&& f, Args... args);
-
-    template <class F, class... Args>
-    static void suspend(F f, Args... args);
-
-    static void resume(saved_context *sctx) MADI_UNUSED;
 
 }
 }
