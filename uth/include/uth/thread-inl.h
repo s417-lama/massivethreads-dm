@@ -4,31 +4,52 @@
 #include "future.h"
 #include "future-inl.h"
 #include "uni/worker-inl.h"
+#include <tuple>
 
 namespace madm {
 namespace uth {
 
     template <class T, int NDEPS>
-    thread<T, NDEPS>::thread() : future_(), synched_(false) {}
+    thread<T, NDEPS>::thread() : future_() {}
 
     template <class T, int NDEPS>
     template <class F, class... Args>
     thread<T, NDEPS>::thread(const F& f, Args... args)
         : future_()
     {
+        spawn(f, args...);
+    }
+
+    template <class T, int NDEPS>
+    template <class F, class... Args>
+    bool thread<T, NDEPS>::spawn(const F& f, Args... args)
+    {
+        return spawn_aux(f, std::make_tuple(args...), [](bool parent_popped){});
+    }
+
+    template <class T, int NDEPS>
+    template <class F, class ArgsTuple, class Callback>
+    bool thread<T, NDEPS>::spawn_aux(const F& f, ArgsTuple args, Callback cb_on_die)
+    {
         madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
         madi::worker& w = madi::current_worker();
         future_ = future<T, NDEPS>::make(w);
 
-        synched_ = w.fork(start<F, Args...>, future_, f, args...);
+        return w.fork(start<F, ArgsTuple, Callback>, std::make_tuple(future_, f, args, cb_on_die));
     }
 
     template <class T, int NDEPS>
     T thread<T, NDEPS>::join(int dep_id)
     {
-        T ret = future_.get(dep_id);
-        synched_ = true;
+        return join_aux(dep_id, []{});
+    }
+
+    template <class T, int NDEPS>
+    template <class Callback>
+    T thread<T, NDEPS>::join_aux(int dep_id, Callback cb_on_block)
+    {
+        T ret = future_.get(dep_id, cb_on_block);
         return ret;
     }
 
@@ -39,29 +60,22 @@ namespace uth {
     }
 
     template <class T, int NDEPS>
-    bool thread<T, NDEPS>::synched()
-    {
-        return synched_;
-    }
-
-    template <class T, int NDEPS>
-    template <class F, class... Args>
-    void thread<T, NDEPS>::start(future<T, NDEPS> fut, F f, Args... args)
+    template <class F, class ArgsTuple, class Callback>
+    void thread<T, NDEPS>::start(future<T, NDEPS> fut, F f, ArgsTuple args, Callback cb_on_die)
     {
         madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_FORK>();
 
-        T value = f(args...);
+        T value = std::apply(f, args);
 
         madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
-        fut.set(value);
+        fut.set(value, cb_on_die);
     }
 
     template <int NDEPS>
     class thread<void, NDEPS> {
     private:
         future<long, NDEPS> future_;
-        bool synched_;
 
     public:
         // constr/destr with no thread
@@ -73,58 +87,49 @@ namespace uth {
         explicit thread(const F& f, Args... args)
             : future_()
         {
+            spawn(f, args...);
+        }
+
+        template <class F, class... Args>
+        bool spawn(const F& f, Args... args)
+        {
+            return spawn_aux(f, std::make_tuple(args...), [](bool parent_popped){});
+        }
+
+        template <class F, class ArgsTuple, class Callback>
+        bool spawn_aux(const F& f, ArgsTuple args, Callback cb_on_die)
+        {
             madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
             madi::worker& w = madi::current_worker();
             future_ = future<long, NDEPS>::make(w);
 
-            synched_ = w.fork(start<F, Args...>, future_, f, args...);
+            return w.fork(start<F, ArgsTuple, Callback>, std::make_tuple(future_, f, args, cb_on_die));
         }
 
         // copy and move constrs
         thread& operator=(const thread&) = delete;
         thread(thread&& other);  // TODO: implement
 
-        void join(int dep_id = 0) { future_.get(dep_id); synched_ = true; }
+        void join(int dep_id = 0) { join_aux(dep_id, []{}); }
+        template <class Callback>
+        void join_aux(int dep_id, Callback cb_on_block) { future_.get(dep_id, cb_on_block); }
         void discard(int dep_id) { return future_.discard(dep_id); }
-        bool synched() { return synched_; }
 
     private:
-        template <class F, class... Args>
-        static void start(future<long, NDEPS> fut, F f, Args... args)
+        template <class F, class ArgsTuple, class Callback>
+        static void start(future<long, NDEPS> fut, F f, ArgsTuple args, Callback cb_on_die)
         {
             madi::logger::checkpoint<madi::logger::kind::WORKER_THREAD_FORK>();
 
-            f(args...);
+            std::apply(f, args);
 
             madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
 
             long value = 0;
-            fut.set(value);
+            fut.set(value, cb_on_die);
         }
     };
-
-    template <class F, class... Args>
-    static void fork(F&& f, Args... args)
-    {
-        madi::logger::checkpoint<madi::logger::kind::WORKER_BUSY>();
-
-        madi::worker& w = madi::current_worker();
-        w.fork(f, args...);
-    }
-
-    template <class F, class... Args>
-    static void suspend(F&& f, Args... args)
-    {
-        madi::worker& w = madi::current_worker();
-        w.suspend(f, args...);
-    }
-
-    static void resume(saved_context *sctx)
-    {
-        madi::worker& w = madi::current_worker();
-        w.resume(sctx);
-    }
 
 }
 }

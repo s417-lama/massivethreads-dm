@@ -30,9 +30,11 @@ namespace uth {
 
         future& operator=(const future&) = default;
 
-        void set(T& value);
+        template <class Callback>
+        void set(T& value, Callback cb_on_die);
 
-        T get(int dep_id);
+        template <class Callback>
+        T get(int dep_id, Callback cb_on_block);
 
         void discard(int dep_id);
 
