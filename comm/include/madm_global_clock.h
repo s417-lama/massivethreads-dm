@@ -19,6 +19,7 @@ namespace madi {
 #undef GLOBAL_CLOCK_N_SYNC_REPEATS
 
         bool initialized_ = false;
+        bool synched_ = false;
 
         MPI_Comm intra_comm_;
         MPI_Comm inter_comm_;
@@ -71,6 +72,8 @@ namespace madi {
         static void sync() {
             global_clock& gc = get_instance_();
 
+            if (gc.synched_) return;
+
             MPI_Barrier(MPI_COMM_WORLD);
 
             // Only the leader of each node involves in clock synchronization
@@ -122,6 +125,8 @@ namespace madi {
             MPI_Bcast(&gc.offset_, 1, MPI_INT64_T, 0, gc.intra_comm_);
 
             MPI_Barrier(MPI_COMM_WORLD);
+
+            gc.synched_ = true;
         }
 
         static void init() {
