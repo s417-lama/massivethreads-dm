@@ -12,7 +12,6 @@ namespace uth {
     class thread {
         // shared object
         future<T, NDEPS> future_;
-        bool synched_;
 
     public:
         // constr/destr with no thread
@@ -36,8 +35,6 @@ namespace uth {
         T join_aux(int dep_id, Callback cb_on_block);
 
         void discard(int dep_id = 0);
-
-        bool synched();
 
     private:
         template <class F, class ArgsTuple, class Callback>

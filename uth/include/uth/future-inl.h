@@ -59,10 +59,10 @@ namespace uth {
 
         bool parent_popped = entry != NULL && entry->stack_top == 0;
 
+        cb_on_die(parent_popped);
+
         madi::suspended_entry ses[NDEPS];
         w.fpool().fill(*this, value, parent_popped, ses);
-
-        cb_on_die(parent_popped);
 
         if (parent_popped) {
             MADI_DPUTS3("pop context %p", &entry->frame_base);
