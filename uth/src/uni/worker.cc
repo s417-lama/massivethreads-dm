@@ -14,6 +14,9 @@
 
 #include <unistd.h>
 
+#ifndef MADI_NULLIFY_PARENT_STACK
+#define MADI_NULLIFY_PARENT_STACK 0
+#endif
 
 using namespace madi;
 typedef madi::comm::aminfo aminfo;
@@ -23,7 +26,7 @@ extern "C" {
                                              void *p3);
     void madi_worker_do_resume_remote_suspended(void *p0, void *p1, void *p2,
                                                 void *p3);
-    void madi_resume_context(context *ctx);
+    void madi_resume_context(context *ctx, size_t frame_size, bool is_main_task);
 }
 
 namespace madi {
@@ -148,9 +151,34 @@ void worker::do_scheduler_work()
 
 extern "C" {
 
-void madi_resume_context(context *ctx)
-{
+void madi_resume_context(context* ctx,
+                         size_t   frame_size   [[maybe_unused]],
+                         bool     is_main_task [[maybe_unused]]) {
     //MADI_CONTEXT_ASSERT(ctx);
+
+#if MADI_NULLIFY_PARENT_STACK
+#if MADI_ARCH_TYPE == MADI_ARCH_AARCH64
+    // Workaround for generating backtracing (such as libunwind).
+    // Backtracing in libunwind often causes segfault because of our stack management.
+    // When a stack is moved into the uni-address region, the parent stack does not exist.
+    // Thus, we nullify the frame pointer and instruction pointer that are outside the
+    // current stack (which should be in the parent stack area), so that libunwind does not
+    // go further than that.
+    if (!is_main_task) {
+        auto nullify_fp_ip_if_outside = [&](void** fp) {
+            if ((uintptr_t)fp >= (uintptr_t)ctx + frame_size) {
+                *fp = NULL;
+                *(fp + 1) = NULL;
+            }
+        };
+        nullify_fp_ip_if_outside((void**)ctx->fp);
+        if (ctx->parent) {
+            nullify_fp_ip_if_outside((void**)ctx->parent->fp);
+        }
+    }
+#endif
+    // TODO: support for other archtectures
+#endif
 
     MADI_RESUME_CONTEXT(ctx);
 }
@@ -188,7 +216,7 @@ void madi_worker_do_resume_saved_context(void *p0, void *p1, void *p2, void *p3)
     MADI_DPUTSR2("resuming  [%p, %p) (size = %zu) (waiting)",
                  frame_base, frame_base + frame_size, frame_size);
 
-    madi_resume_context(ctx);
+    madi_resume_context(ctx, frame_size, sctx->is_main_task);
 }
 
 __attribute__((noinline))
@@ -215,7 +243,7 @@ void madi_worker_do_resume_remote_suspended(void *p0, void *p1, void *p2, void *
                  stack_top, stack_top + frame_size, frame_size);
 
     context* ctx = (context*)stack_top;
-    madi_resume_context(ctx);
+    madi_resume_context(ctx, frame_size, false);
 }
 
 __attribute__((noinline))
@@ -238,7 +266,7 @@ void madi_worker_do_resume_remote_context_1(uth_comm& c,
                  frame_base, frame_base + frame_size, frame_size);
 
     // resume the context of the stolen thread
-    madi_resume_context(ctx);
+    madi_resume_context(ctx, frame_size, false);
 }
 
 __attribute__((noinline))
@@ -302,7 +330,7 @@ void madi_worker_do_resume_remote_context_by_messages_1(steal_rep *rep)
 
     free(rep); // allocated at reply_steal
 
-    madi_resume_context(ctx);
+    madi_resume_context(ctx, frame_size, false);
 }
 
 __attribute__((noinline))
