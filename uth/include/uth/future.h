@@ -65,8 +65,8 @@ namespace madi {
 
         template <class T, int NDEPS>
         struct entry {
-            T value;
             int resume_flags[NDEPS]; // 0/1/2: resume flag, 417/418: freed
+            T value;
             suspended_entry s_entries[NDEPS];
         };
 
