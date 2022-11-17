@@ -152,7 +152,7 @@ namespace madi {
     inline void die(const char *s)
     {
         fprintf(stderr, "MassiveThreads/DM fatal error: %s\n", s);
-        madi_exit(1);
+        abort();
     }
 
 #define MADI_DIE(fmt, ...)                                              \
@@ -161,7 +161,7 @@ namespace madi {
                 "MassiveThreads/DM fatal error: " fmt " (%s:%d)\n",     \
                 ##__VA_ARGS__, __FILE__, __LINE__);                     \
         fflush(stderr);                                                 \
-        madi_exit(1);                                                   \
+        std::abort();                                                   \
     } while (false)
 
 #define MADI_SPMD_DIE(fmt, ...)                         \
