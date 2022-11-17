@@ -152,7 +152,7 @@ namespace madi {
     inline void die(const char *s)
     {
         fprintf(stderr, "MassiveThreads/DM fatal error: %s\n", s);
-        abort();
+        std::abort();
     }
 
 #define MADI_DIE(fmt, ...)                                              \
