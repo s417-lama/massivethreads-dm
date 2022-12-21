@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <unistd.h>
 
+#include <mpi.h>
+
 namespace madi {
 
     // default values of configuration variables
@@ -35,14 +37,26 @@ namespace madi {
         }
     }
 
+    template <class T>
+    void set_option_coll(const char *name, T *value) {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        if (rank == 0) {
+            set_option(name, value);
+        }
+
+        MPI_Bcast(value, sizeof(T), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+
     void uth_options_initialize()
     {
-        set_option("MADM_STACK_SIZE", &uth_options.stack_size);
-        set_option("MADM_STACK_DETECT", &uth_options.stack_overflow_detection);
-        set_option("MADM_TASKQ_CAPACITY", &uth_options.taskq_capacity);
-        set_option("MADM_PROFILE", &uth_options.profile);
-        set_option("MADM_STEAL_LOG", &uth_options.steal_log);
-        set_option("MADM_ABORTING_STEAL", &uth_options.aborting_steal);
+        set_option_coll("MADM_STACK_SIZE", &uth_options.stack_size);
+        set_option_coll("MADM_STACK_DETECT", &uth_options.stack_overflow_detection);
+        set_option_coll("MADM_TASKQ_CAPACITY", &uth_options.taskq_capacity);
+        set_option_coll("MADM_PROFILE", &uth_options.profile);
+        set_option_coll("MADM_STEAL_LOG", &uth_options.steal_log);
+        set_option_coll("MADM_ABORTING_STEAL", &uth_options.aborting_steal);
 
         long page_size = sysconf(_SC_PAGE_SIZE);
         uth_options.page_size = static_cast<size_t>(page_size);

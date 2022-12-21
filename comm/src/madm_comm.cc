@@ -23,12 +23,6 @@ namespace comm {
 
         MADI_DPUTS2("madm::comm start initialization");
 
-        int init;
-        MPI_Initialized(&init);
-
-        if (!init)
-            MPI_Init(&argc, &argv);
-
         g.debug_out = stderr;
         MPI_Comm_rank(MPI_COMM_WORLD, &g.debug_pid);
         int nproc;

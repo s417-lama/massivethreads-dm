@@ -67,6 +67,12 @@ namespace madi {
     {
         debug_out_ = stderr;
 
+        int init;
+        MPI_Initialized(&init);
+
+        if (!init)
+            MPI_Init(&argc, &argv);
+
         uth_options_initialize();
 
         g_prof = new prof();
