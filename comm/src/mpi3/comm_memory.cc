@@ -273,10 +273,21 @@ namespace comm {
             MADI_DIE("FIXME: the current implementation assume MPI_WIN_MODEL == MPI_WIN_UNIFIED");
         }
 
-        int r1 = MPI_Win_lock_all(0, win);
+        int r1 = MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
         MADI_CHECK(r1 == MPI_SUCCESS);
 
+        // Invoke wireup routines in the internal of MPI, assuming that this is the first
+        // one-sided communication since MPI_Init. MPI_MODE_NOCHECK will not involve communication.
+        for (int i = 1; i <= n_procs / 2; i++) {
+            int target_rank = (me + i) % n_procs;
+            char buf;
+            MPI_Get(&buf, 1, MPI_CHAR, target_rank, 0, 1, MPI_CHAR, win);
+            MPI_Win_flush(target_rank, win);
+        }
+
         wins_[memid] = win;
+
+        MPI_Barrier(comm);
 
         double t2 = now();
 
