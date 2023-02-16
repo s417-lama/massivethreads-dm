@@ -157,13 +157,19 @@ void madi_resume_context(context* ctx,
     //MADI_CONTEXT_ASSERT(ctx);
 
 #if MADI_NULLIFY_PARENT_STACK
-#if MADI_ARCH_TYPE == MADI_ARCH_AARCH64
     // Workaround for generating backtracing (such as libunwind).
     // Backtracing in libunwind often causes segfault because of our stack management.
     // When a stack is moved into the uni-address region, the parent stack does not exist.
     // Thus, we nullify the frame pointer and instruction pointer that are outside the
     // current stack (which should be in the parent stack area), so that libunwind does not
     // go further than that.
+#if MADI_ARCH_TYPE == MADI_ARCH_X86_64
+    if (!is_main_task && ctx->parent) {
+        ctx->parent->rip = NULL;
+        ctx->parent->rsp = NULL;
+        ctx->parent->rbp = NULL;
+    }
+#elif MADI_ARCH_TYPE == MADI_ARCH_AARCH64
     if (!is_main_task) {
         auto nullify_fp_ip_if_outside = [&](void** fp) {
             if ((uintptr_t)fp >= (uintptr_t)ctx + frame_size) {
@@ -177,7 +183,6 @@ void madi_resume_context(context* ctx,
         }
     }
 #endif
-    // TODO: support for other archtectures
 #endif
 
     MADI_RESUME_CONTEXT(ctx);
