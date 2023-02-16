@@ -127,12 +127,11 @@ namespace madi {
     {
         logger::begin_data bd = logger::begin_event<logger::kind::TASKQ_EMPTY>();
 
-        global_taskque& self = *taskq_buf; // RMA buffer
-        c.get(&self, this, sizeof(self), target);
+        c.get(const_cast<int*>(&taskq_buf->top_), const_cast<int*>(&this->top_), sizeof(int) * 2, target);
 
         logger::end_event<logger::kind::TASKQ_EMPTY>(bd, target);
 
-        return self.base_ >= self.top_;
+        return taskq_buf->base_ >= taskq_buf->top_;
     }
 
     inline bool global_taskque::trylock(uth_comm& c, uth_pid_t target)
