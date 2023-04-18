@@ -1,6 +1,12 @@
-# Uni-Address Threads
+# MassiveThreads/DM
 
 Forked from: https://github.com/shigeki-akiyama/massivethreads-dm
+
+This repository contains a threading layer of the old version of the Itoyori runtime system.
+
+A newer version of Itoyori will be available here: https://github.com/itoyori/itoyori
+
+This repository is only for the reproducibility of experimental results. If you want to run Itoyori, please use the newer version of Itoyori.
 
 ## How to Run Locally
 
@@ -44,3 +50,9 @@ For MPICH:
 ```
 -env MADM_RUN__ 1
 ```
+
+## Publications
+
+- Shigeki Akiyama and Kenjiro Taura. "Uni-Address Threads: Scalable Thread Management for RDMA-Based Work Stealing." in HPDC '15. https://doi.org/10.1145/2749246.2749272
+- Shigeki Akiyama and Kenjiro Taura. "Scalable Work Stealing of Native Threads on an x86-64 Infiniband Cluster." Journal of Information Processing (JIP). 2016. https://doi.org/10.2197/ipsjjip.24.583
+- Shumpei Shiina and Kenjiro Taura. "Distributed Continuation Stealing is More Scalable than You Might Think." in Cluster '22. https://doi.org/10.1109/CLUSTER51413.2022.00027
